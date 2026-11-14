@@ -7,6 +7,7 @@ interface PersonBoxProps {
   isSelected: boolean;
   isHighlighted: boolean;
   isRoot: boolean;
+  fontFamily?: string;
   onSelect: (id: string) => void;
   onAddChildren: (id: string) => void;
   onToggleCollapse: (id: string) => void;
@@ -18,6 +19,7 @@ export const PersonBox: React.FC<PersonBoxProps> = ({
   isSelected,
   isHighlighted,
   isRoot,
+  fontFamily,
   onSelect,
   onAddChildren,
   onToggleCollapse,
@@ -49,11 +51,12 @@ export const PersonBox: React.FC<PersonBoxProps> = ({
         top: `${node.y}px`,
         width: `${node.width}px`,
         height: `${node.height}px`,
+        fontFamily: fontFamily || '"Noto Sans Malayalam", "Manjari", "Gayathri", sans-serif',
       }}
     >
       {/* Box Name: Strictly person's name only (no emojis, human icons, or profile pictures) */}
       <div
-        className={`w-full text-center truncate px-1 text-[13px] leading-tight ${
+        className={`w-full text-center truncate px-1 text-[13px] leading-snug tracking-wide ${
           isPlaceholder ? 'italic text-slate-400 text-[12px]' : isRoot ? 'font-semibold text-sky-950' : 'font-medium'
         }`}
         title={node.name}

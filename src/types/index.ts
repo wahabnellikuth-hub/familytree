@@ -15,6 +15,7 @@ export interface FamilyTreeData {
   rootPersonId: string;
   people: Record<string, Person>;
   layoutMode: LayoutMode;
+  fontFamily?: string; // Malayalam font: 'Noto Sans Malayalam' | 'Manjari' | 'Gayathri' | 'Anek Malayalam'
   collapsedBranchIds?: string[]; // IDs of people whose descendant subtrees are collapsed
   createdAt: number;
   updatedAt: number;

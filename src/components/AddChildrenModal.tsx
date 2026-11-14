@@ -111,8 +111,8 @@ export const AddChildrenModal: React.FC<AddChildrenModalProps> = ({
                     autoFocus={index === names.length - 1}
                     value={name}
                     onChange={(e) => handleNameChange(index, e.target.value)}
-                    placeholder={`e.g. Son ${index + 1}`}
-                    className="flex-1 px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                    placeholder={`e.g. Son ${index + 1} / മകൻ ${index + 1}`}
+                    className="flex-1 px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 font-sans"
                   />
                   <button
                     type="button"

@@ -51,6 +51,13 @@ export async function exportTreeImage(
       return { success: false, error: 'Failed to create 2D canvas rendering context.' };
     }
 
+    // Wait for fonts (especially Malayalam web fonts) to be fully loaded
+    if (typeof document !== 'undefined' && document.fonts) {
+      await document.fonts.ready;
+    }
+
+    const fontFamilyName = tree.fontFamily || '"Noto Sans Malayalam", "Manjari", "Gayathri", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+
     // Set scale for high-DPI rendering
     ctx.scale(scale, scale);
 
@@ -61,14 +68,14 @@ export async function exportTreeImage(
     // Optional Title header
     if (options.includeTitle !== false) {
       ctx.fillStyle = '#0f172a';
-      ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.font = `bold 20px ${fontFamilyName}`;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
       const rootName = tree.people[options.focusPersonId || tree.rootPersonId]?.name || 'Lineage';
       ctx.fillText(`${tree.title} — Lineage of ${rootName}`, 60, 36);
 
       ctx.fillStyle = '#64748b';
-      ctx.font = '12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.font = `12px ${fontFamilyName}`;
       ctx.fillText(`Paternal Lineage Chart • ${layout.nodes.length} members • Generated on ${new Date().toLocaleDateString()}`, 60, 58);
     }
 
@@ -115,7 +122,7 @@ export async function exportTreeImage(
 
         // Placeholder Text
         ctx.fillStyle = '#64748b';
-        ctx.font = 'italic 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.font = `italic 12px ${fontFamilyName}`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(node.name || 'Empty Box', x + w / 2, y + h / 2);
@@ -134,8 +141,8 @@ export async function exportTreeImage(
         // Person Name (strictly name only, truncated if exceptionally long)
         ctx.fillStyle = '#0f172a'; // Slate 900
         ctx.font = isRoot
-          ? 'bold 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-          : '500 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+          ? `bold 13px ${fontFamilyName}`
+          : `500 13px ${fontFamilyName}`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 

@@ -302,6 +302,16 @@ export const App: React.FC = () => {
     updateTreeState(updated);
   };
 
+  const handleChangeFont = (font: string) => {
+    if (!activeTree) return;
+    const updated: FamilyTreeData = {
+      ...activeTree,
+      fontFamily: font,
+      updatedAt: Date.now(),
+    };
+    updateTreeState(updated);
+  };
+
   // If no tree is currently open, show the Welcome Dashboard
   if (!activeTree) {
     return (
@@ -328,6 +338,8 @@ export const App: React.FC = () => {
         onUpdateTreeTitle={handleUpdateTreeTitle}
         layoutMode={activeTree.layoutMode}
         onChangeLayoutMode={handleChangeLayoutMode}
+        currentFont={activeTree.fontFamily || 'Noto Sans Malayalam'}
+        onChangeFont={handleChangeFont}
         onReorganise={() => {
           // Trigger slight state nudge to force fresh tidy tree recalculation
           setActiveTree({ ...activeTree });
@@ -354,6 +366,7 @@ export const App: React.FC = () => {
           rootPersonId={focusedBranchId || activeTree.rootPersonId}
           selectedPersonId={selectedPersonId}
           highlightedIds={highlightedIds}
+          fontFamily={activeTree.fontFamily}
           onSelectPerson={setSelectedPersonId}
           onAddChildren={(id) => setAddChildTargetId(id)}
           onToggleCollapse={handleToggleCollapse}

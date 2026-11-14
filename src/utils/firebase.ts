@@ -117,3 +117,4 @@ export async function deleteTreeFromFirestore(id: string): Promise<boolean> {
     return false;
   }
 }
+

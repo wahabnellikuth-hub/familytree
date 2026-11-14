@@ -6,6 +6,13 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['"Noto Sans Malayalam"', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        malayalam: ['"Noto Sans Malayalam"', 'Manjari', 'Gayathri', 'sans-serif'],
+        manjari: ['Manjari', 'sans-serif'],
+        gayathri: ['Gayathri', 'sans-serif'],
+        anek: ['"Anek Malayalam"', 'sans-serif'],
+      },
       colors: {
         brand: {
           50: '#f0f7ff',

@@ -342,22 +342,22 @@ export const WelcomeDashboard: React.FC<WelcomeDashboardProps> = ({
                   required
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="e.g. Al-Mansoor Paternal Lineage"
-                  className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  placeholder="e.g. നെല്ലിക്കുത്ത് തറവാട് / Al-Mansoor Lineage"
+                  className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 font-sans"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Name of First Grandfather (Starting Ancestor)
+                  Name of First Grandfather (Starting Ancestor) / ആദ്യ മുത്തശ്ശന്റെ പേര്
                 </label>
                 <input
                   type="text"
                   required
                   value={newGrandfather}
                   onChange={(e) => setNewGrandfather(e.target.value)}
-                  placeholder="e.g. Grandfather Abdullah"
-                  className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  placeholder="e.g. അബ്ദുല്ല / Grandfather Abdullah"
+                  className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 font-sans"
                 />
                 <p className="text-[11px] text-slate-400 mt-1">
                   The starting ancestor will be positioned at the root of the family tree.

@@ -15,6 +15,7 @@ import {
   AlertCircle,
   Edit3,
   Cloud,
+  Type,
 } from 'lucide-react';
 import { LayoutMode, SaveStatus } from '../types';
 
@@ -23,6 +24,8 @@ interface HeaderProps {
   onUpdateTreeTitle: (newTitle: string) => void;
   layoutMode: LayoutMode;
   onChangeLayoutMode: (mode: LayoutMode) => void;
+  currentFont?: string;
+  onChangeFont?: (font: string) => void;
   onReorganise: () => void;
   saveStatus: SaveStatus;
   onManualSave: () => void;
@@ -43,6 +46,8 @@ export const Header: React.FC<HeaderProps> = ({
   onUpdateTreeTitle,
   layoutMode,
   onChangeLayoutMode,
+  currentFont = 'Noto Sans Malayalam',
+  onChangeFont,
   onReorganise,
   saveStatus,
   onManualSave,
@@ -216,6 +221,25 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="hidden xl:inline">Hybrid</span>
           </button>
         </div>
+
+        {/* Malayalam Font Selector */}
+        {onChangeFont && (
+          <div className="hidden md:flex items-center space-x-1 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg text-xs">
+            <Type className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
+            <select
+              value={currentFont}
+              onChange={(e) => onChangeFont(e.target.value)}
+              className="bg-transparent text-xs text-slate-700 font-medium focus:outline-none cursor-pointer pr-1"
+              title="Select Malayalam typography font"
+            >
+              <option value="Noto Sans Malayalam">Noto Sans (മലയാളം)</option>
+              <option value="Manjari">Manjari (മഞ്ജരി)</option>
+              <option value="Gayathri">Gayathri (ഗായത്രി)</option>
+              <option value="Anek Malayalam">Anek (അനേക്)</option>
+              <option value="Inter, system-ui, sans-serif">Standard Sans</option>
+            </select>
+          </div>
+        )}
 
         {/* Reorganise Tree */}
         <button

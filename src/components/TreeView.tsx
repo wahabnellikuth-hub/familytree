@@ -8,6 +8,7 @@ interface TreeViewProps {
   rootPersonId: string;
   selectedPersonId: string | null;
   highlightedIds: Set<string>;
+  fontFamily?: string;
   onSelectPerson: (id: string | null) => void;
   onAddChildren: (id: string) => void;
   onToggleCollapse: (id: string) => void;
@@ -19,6 +20,7 @@ export const TreeView: React.FC<TreeViewProps> = ({
   rootPersonId,
   selectedPersonId,
   highlightedIds,
+  fontFamily,
   onSelectPerson,
   onAddChildren,
   onToggleCollapse,
@@ -247,6 +249,7 @@ export const TreeView: React.FC<TreeViewProps> = ({
             isSelected={selectedPersonId === node.id}
             isHighlighted={highlightedIds.has(node.id)}
             isRoot={node.id === rootPersonId}
+            fontFamily={fontFamily}
             onSelect={onSelectPerson}
             onAddChildren={onAddChildren}
             onToggleCollapse={onToggleCollapse}
