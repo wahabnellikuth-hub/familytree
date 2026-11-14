@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { FamilyTreeData, LayoutMode, SaveStatus, Person } from './types';
+import { FamilyTreeData, LayoutMode, SaveStatus, Person, BranchDirection } from './types';
 import { calculateTreeLayout } from './utils/layoutEngine';
 import {
   addChildren,
@@ -10,6 +10,7 @@ import {
   reorderChildren,
   movePerson,
   toggleBranchCollapse,
+  setPersonBranchDirection,
   getDescendantIds,
   getAncestorIds,
   countSubtreeDescendants,
@@ -312,6 +313,12 @@ export const App: React.FC = () => {
     updateTreeState(updated);
   };
 
+  const handleChangeBranchDirection = (personId: string, direction: BranchDirection) => {
+    if (!activeTree) return;
+    const updated = setPersonBranchDirection(activeTree, personId, direction);
+    updateTreeState(updated);
+  };
+
   // If no tree is currently open, show the Welcome Dashboard
   if (!activeTree) {
     return (
@@ -390,6 +397,7 @@ export const App: React.FC = () => {
             onMovePerson={(id) => setMoveTargetId(id)}
             onDeletePerson={(id) => setDeleteTargetId(id)}
             onToggleCollapse={handleToggleCollapse}
+            onChangeBranchDirection={handleChangeBranchDirection}
           />
         )}
       </div>

@@ -1,5 +1,7 @@
 export type LayoutMode = 'vertical' | 'horizontal' | 'hybrid';
 
+export type BranchDirection = 'inherit' | 'horizontal' | 'vertical';
+
 export interface Person {
   id: string;
   name: string;
@@ -7,6 +9,7 @@ export interface Person {
   childrenIds: string[]; // Ordered IDs of sons/children
   generation: number; // 1 for first grandfather, 2 for sons, 3 for grandsons, etc.
   isPlaceholder?: boolean; // True if it's an empty placeholder box
+  branchDirection?: BranchDirection; // Per-father arrangement: 'inherit' (follows tree), 'horizontal' (side-by-side), or 'vertical' (stacked column)
 }
 
 export interface FamilyTreeData {
@@ -35,6 +38,7 @@ export interface NodePosition {
   totalDescendants: number;
   parentId: string | null;
   childrenIds: string[];
+  branchDirection?: BranchDirection;
 }
 
 export interface TreeConnectionLine {

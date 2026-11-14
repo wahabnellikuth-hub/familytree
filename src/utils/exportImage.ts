@@ -1,5 +1,5 @@
 import { FamilyTreeData } from '../types';
-import { calculateTreeLayout } from './layoutEngine';
+import { calculateTreeLayout, computeNodeDimensions } from './layoutEngine';
 
 export interface ExportOptions {
   format: 'png' | 'jpeg';
@@ -138,7 +138,7 @@ export async function exportTreeImage(
         ctx.fill();
         ctx.stroke();
 
-        // Person Name (strictly name only, truncated if exceptionally long)
+        // Person Name: Multi-line wrapped, zero dots "..." truncation!
         ctx.fillStyle = '#0f172a'; // Slate 900
         ctx.font = isRoot
           ? `bold 13px ${fontFamilyName}`
@@ -146,17 +146,14 @@ export async function exportTreeImage(
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
-        // Fit text within box
-        let displayText = node.name;
-        const maxTextWidth = w - 16;
-        if (ctx.measureText(displayText).width > maxTextWidth) {
-          while (displayText.length > 3 && ctx.measureText(displayText + '…').width > maxTextWidth) {
-            displayText = displayText.slice(0, -1);
-          }
-          displayText += '…';
-        }
+        const dims = computeNodeDimensions(node.name, false);
+        const textLines = dims.lines;
+        const lineSpacing = 18;
+        const startY = y + h / 2 - ((textLines.length - 1) * lineSpacing) / 2;
 
-        ctx.fillText(displayText, x + w / 2, y + h / 2);
+        for (let li = 0; li < textLines.length; li++) {
+          ctx.fillText(textLines[li], x + w / 2, startY + li * lineSpacing);
+        }
       }
     }
 

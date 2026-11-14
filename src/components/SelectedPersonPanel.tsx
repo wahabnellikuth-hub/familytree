@@ -1,5 +1,5 @@
 import React from 'react';
-import { FamilyTreeData } from '../types';
+import { FamilyTreeData, BranchDirection } from '../types';
 import { countSubtreeDescendants } from '../utils/treeOperations';
 import {
   UserPlus,
@@ -11,6 +11,9 @@ import {
   ArrowUpDown,
   Move,
   X,
+  Columns,
+  Rows,
+  Sparkles,
 } from 'lucide-react';
 
 interface SelectedPersonPanelProps {
@@ -26,6 +29,7 @@ interface SelectedPersonPanelProps {
   onMovePerson: (id: string) => void;
   onDeletePerson: (id: string) => void;
   onToggleCollapse: (id: string) => void;
+  onChangeBranchDirection: (id: string, dir: BranchDirection) => void;
 }
 
 export const SelectedPersonPanel: React.FC<SelectedPersonPanelProps> = ({
@@ -41,6 +45,7 @@ export const SelectedPersonPanel: React.FC<SelectedPersonPanelProps> = ({
   onMovePerson,
   onDeletePerson,
   onToggleCollapse,
+  onChangeBranchDirection,
 }) => {
   const person = tree.people[personId];
   if (!person) return null;
@@ -115,6 +120,61 @@ export const SelectedPersonPanel: React.FC<SelectedPersonPanelProps> = ({
             </div>
           )}
         </div>
+
+        {/* Per-Father Branch Arrangement (Horizontal vs Vertical for sons) */}
+        {person.childrenIds.length > 0 && (
+          <div className="bg-slate-50 p-3 rounded-lg border border-slate-200/80 space-y-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">
+              Sons Arrangement (മക്കളുടെ ക്രമീകരണം)
+            </span>
+            <p className="text-[11px] text-slate-500 leading-tight">
+              Choose whether this father's sons arrange horizontally (side-by-side) or vertically (stacked in a column):
+            </p>
+            <div className="grid grid-cols-3 gap-1 pt-1">
+              <button
+                type="button"
+                onClick={() => onChangeBranchDirection(personId, 'inherit')}
+                className={`px-1.5 py-1.5 rounded-md text-[11px] font-medium border flex flex-col items-center justify-center transition-all ${
+                  !person.branchDirection || person.branchDirection === 'inherit'
+                    ? 'bg-sky-600 text-white border-sky-600 shadow-sm'
+                    : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-200'
+                }`}
+                title="Follows tree default layout"
+              >
+                <Sparkles className="w-3.5 h-3.5 mb-0.5" />
+                <span>Default</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onChangeBranchDirection(personId, 'horizontal')}
+                className={`px-1.5 py-1.5 rounded-md text-[11px] font-medium border flex flex-col items-center justify-center transition-all ${
+                  person.branchDirection === 'horizontal'
+                    ? 'bg-sky-600 text-white border-sky-600 shadow-sm'
+                    : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-200'
+                }`}
+                title="Arrange sons horizontally (side-by-side)"
+              >
+                <Columns className="w-3.5 h-3.5 mb-0.5" />
+                <span>Horizontal</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onChangeBranchDirection(personId, 'vertical')}
+                className={`px-1.5 py-1.5 rounded-md text-[11px] font-medium border flex flex-col items-center justify-center transition-all ${
+                  person.branchDirection === 'vertical'
+                    ? 'bg-sky-600 text-white border-sky-600 shadow-sm'
+                    : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-200'
+                }`}
+                title="Stack sons vertically in a column"
+              >
+                <Rows className="w-3.5 h-3.5 mb-0.5 rotate-90" />
+                <span>Vertical</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="space-y-1.5 pt-1">

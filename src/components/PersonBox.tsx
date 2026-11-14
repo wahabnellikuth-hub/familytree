@@ -56,8 +56,8 @@ export const PersonBox: React.FC<PersonBoxProps> = ({
     >
       {/* Box Name: Strictly person's name only (no emojis, human icons, or profile pictures) */}
       <div
-        className={`w-full text-center truncate px-1 text-[13px] leading-snug tracking-wide ${
-          isPlaceholder ? 'italic text-slate-400 text-[12px]' : isRoot ? 'font-semibold text-sky-950' : 'font-medium'
+        className={`w-full text-center break-words px-1.5 text-[12.5px] leading-snug tracking-normal ${
+          isPlaceholder ? 'italic text-slate-400 text-[11.5px]' : isRoot ? 'font-semibold text-sky-950' : 'font-medium'
         }`}
         title={node.name}
       >

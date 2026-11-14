@@ -1,4 +1,4 @@
-import { FamilyTreeData, Person } from '../types';
+import { FamilyTreeData, Person, BranchDirection } from '../types';
 
 /**
  * Validates a family tree:
@@ -404,6 +404,30 @@ export function movePerson(
       people: newPeople,
       updatedAt: Date.now(),
     },
+  };
+}
+
+/**
+ * Sets individual branch direction for a father's sons ('inherit' | 'horizontal' | 'vertical').
+ */
+export function setPersonBranchDirection(
+  tree: FamilyTreeData,
+  personId: string,
+  direction: BranchDirection
+): FamilyTreeData {
+  const person = tree.people[personId];
+  if (!person) return tree;
+
+  return {
+    ...tree,
+    people: {
+      ...tree.people,
+      [personId]: {
+        ...person,
+        branchDirection: direction,
+      },
+    },
+    updatedAt: Date.now(),
   };
 }
 
