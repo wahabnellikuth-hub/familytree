@@ -14,6 +14,7 @@ import {
   Upload,
   Sparkles,
   AlertCircle,
+  Cloud,
 } from 'lucide-react';
 
 interface WelcomeDashboardProps {
@@ -115,6 +116,11 @@ export const WelcomeDashboard: React.FC<WelcomeDashboardProps> = ({
           </div>
 
           <div className="flex items-center space-x-2">
+            <div className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <Cloud className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Firebase Connected</span>
+            </div>
+
             <button
               onClick={onLoadSampleTree}
               className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100 transition-colors shadow-sm"

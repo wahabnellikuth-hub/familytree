@@ -1,6 +1,12 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { FamilyTreeData, TreeMeta } from '../types';
 import { validateTree } from './treeOperations';
+import {
+  saveTreeToFirestore,
+  getTreeFromFirestore,
+  getAllTreesFromFirestore,
+  deleteTreeFromFirestore,
+} from './firebase';
 
 interface FamilyTreeDB extends DBSchema {
   trees: {
@@ -34,62 +40,106 @@ function getDB(): Promise<IDBPDatabase<FamilyTreeDB>> {
 
 /**
  * Retrieves all saved family trees as metadata for the dashboard list.
+ * Merges local IndexedDB trees with cloud Firebase Firestore trees.
  */
 export async function getAllTrees(): Promise<TreeMeta[]> {
+  const metaMap = new Map<string, TreeMeta>();
+
+  // 1. Fetch local IndexedDB trees
   try {
     const db = await getDB();
-    const trees = await db.getAllFromIndex('trees', 'by-updated');
-    // Sort descending by updatedAt
-    trees.sort((a, b) => b.updatedAt - a.updatedAt);
-
-    return trees.map((t) => ({
-      id: t.id,
-      title: t.title,
-      rootName: t.people[t.rootPersonId]?.name || 'Unknown',
-      personCount: Object.keys(t.people).length,
-      updatedAt: t.updatedAt,
-    }));
+    const localTrees = await db.getAllFromIndex('trees', 'by-updated');
+    for (const t of localTrees) {
+      metaMap.set(t.id, {
+        id: t.id,
+        title: t.title,
+        rootName: t.people[t.rootPersonId]?.name || 'Unknown',
+        personCount: Object.keys(t.people).length,
+        updatedAt: t.updatedAt,
+      });
+    }
   } catch (err) {
     console.error('Failed to get trees from IndexedDB:', err);
-    return [];
   }
+
+  // 2. Fetch cloud trees from Firebase Firestore (non-blocking if offline)
+  try {
+    const cloudTrees = await getAllTreesFromFirestore();
+    for (const ct of cloudTrees) {
+      const existing = metaMap.get(ct.id);
+      if (!existing || ct.updatedAt > existing.updatedAt) {
+        metaMap.set(ct.id, ct);
+      }
+    }
+  } catch (err) {
+    console.warn('Could not reach Firebase Firestore for tree list:', err);
+  }
+
+  const result = Array.from(metaMap.values());
+  result.sort((a, b) => b.updatedAt - a.updatedAt);
+  return result;
 }
 
 /**
  * Loads a complete family tree by ID.
+ * First checks local IndexedDB; if missing or outdated, loads from Firebase Firestore.
  */
 export async function getTree(id: string): Promise<FamilyTreeData | null> {
+  let localTree: FamilyTreeData | null = null;
   try {
     const db = await getDB();
-    const tree = await db.get('trees', id);
-    return tree || null;
+    localTree = (await db.get('trees', id)) || null;
   } catch (err) {
-    console.error(`Failed to load tree ${id}:`, err);
-    return null;
+    console.error(`Failed to load tree ${id} from IndexedDB:`, err);
   }
+
+  // Check Firebase Firestore
+  try {
+    const cloudTree = await getTreeFromFirestore(id);
+    if (cloudTree) {
+      if (!localTree || cloudTree.updatedAt > localTree.updatedAt) {
+        // Cache to local IndexedDB
+        const db = await getDB();
+        await db.put('trees', cloudTree);
+        return cloudTree;
+      }
+    }
+  } catch (err) {
+    console.warn('Firebase Firestore load error:', err);
+  }
+
+  return localTree;
 }
 
 /**
- * Saves a family tree to IndexedDB.
+ * Saves a family tree to both local IndexedDB and Firebase Firestore.
  */
 export async function saveTree(tree: FamilyTreeData): Promise<boolean> {
+  const toSave: FamilyTreeData = {
+    ...tree,
+    updatedAt: Date.now(),
+  };
+
+  // 1. Save to local IndexedDB for instant UI response and offline capability
   try {
     const db = await getDB();
-    const toSave: FamilyTreeData = {
-      ...tree,
-      updatedAt: Date.now(),
-    };
     await db.put('trees', toSave);
     await db.put('meta', toSave.id, 'lastActiveTreeId');
-    return true;
   } catch (err) {
-    console.error('Failed to save tree:', err);
+    console.error('Failed to save tree to IndexedDB:', err);
     return false;
   }
+
+  // 2. Sync to Firebase Firestore asynchronously in the background
+  saveTreeToFirestore(toSave).catch((err) => {
+    console.warn('Background Firebase sync note:', err);
+  });
+
+  return true;
 }
 
 /**
- * Deletes a saved family tree.
+ * Deletes a saved family tree locally and from Firebase Firestore.
  */
 export async function deleteTree(id: string): Promise<boolean> {
   try {
@@ -99,11 +149,16 @@ export async function deleteTree(id: string): Promise<boolean> {
     if (lastActive === id) {
       await db.delete('meta', 'lastActiveTreeId');
     }
-    return true;
   } catch (err) {
-    console.error(`Failed to delete tree ${id}:`, err);
-    return false;
+    console.error(`Failed to delete tree ${id} from IndexedDB:`, err);
   }
+
+  // Delete from Firestore
+  deleteTreeFromFirestore(id).catch((err) => {
+    console.warn('Background Firebase delete note:', err);
+  });
+
+  return true;
 }
 
 /**
@@ -178,4 +233,3 @@ export function parseAndValidateTreeJSON(jsonStr: string): { valid: boolean; tre
     return { valid: false, error: `Invalid JSON format: ${err.message}` };
   }
 }
-

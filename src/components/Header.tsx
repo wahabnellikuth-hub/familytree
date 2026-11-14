@@ -14,6 +14,7 @@ import {
   Check,
   AlertCircle,
   Edit3,
+  Cloud,
 } from 'lucide-react';
 import { LayoutMode, SaveStatus } from '../types';
 
@@ -110,8 +111,8 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         )}
 
-        {/* Autosave status indicator */}
-        <div className="hidden lg:flex items-center space-x-1 text-[11px] font-medium text-slate-400 pl-1">
+        {/* Autosave status indicator & Firebase Cloud sync */}
+        <div className="hidden lg:flex items-center space-x-2 text-[11px] font-medium text-slate-400 pl-1">
           {saveStatus === 'saved' && (
             <span className="flex items-center text-emerald-600">
               <Check className="w-3 h-3 mr-0.5" /> Saved
@@ -132,6 +133,10 @@ export const Header: React.FC<HeaderProps> = ({
               <AlertCircle className="w-3 h-3 mr-0.5" /> Save failed
             </span>
           )}
+
+          <span className="flex items-center text-slate-400 border-l border-slate-200 pl-2 text-[10px]" title="Connected to Firebase Cloud Firestore">
+            <Cloud className="w-3 h-3 mr-1 text-sky-500" /> Firebase Cloud
+          </span>
         </div>
       </div>
 
