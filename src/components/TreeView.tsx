@@ -143,24 +143,64 @@ export const TreeView: React.FC<TreeViewProps> = ({
     setIsDragging(false);
   };
 
-  // Touch pan support for mobile
+  // Touch pan & pinch zoom support for mobile
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
+  const [touchDistance, setTouchDistance] = useState<number | null>(null);
+  const [touchBaseScale, setTouchBaseScale] = useState<number>(1);
+
+  const getTouchDist = (touches: React.TouchList) => {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 1) {
       setTouchStart({ x: e.touches[0].clientX - position.x, y: e.touches[0].clientY - position.y });
+      setTouchDistance(null);
+    } else if (e.touches.length === 2) {
+      setTouchDistance(getTouchDist(e.touches));
+      setTouchBaseScale(scale);
     }
   };
+
   const handleTouchMove = (e: React.TouchEvent) => {
     if (e.touches.length === 1 && touchStart) {
       setPosition({
         x: e.touches[0].clientX - touchStart.x,
         y: e.touches[0].clientY - touchStart.y,
       });
+    } else if (e.touches.length === 2 && touchDistance) {
+      const currentDist = getTouchDist(e.touches);
+      const ratio = currentDist / touchDistance;
+      const nextScale = Math.min(Math.max(touchBaseScale * ratio, 0.15), 2.5);
+      setScale(nextScale);
     }
   };
+
   const handleTouchEnd = () => {
     setTouchStart(null);
+    setTouchDistance(null);
   };
+
+  // Keyboard navigation (Arrow keys to pan)
+  useEffect(() => {
+    const handleKeyPan = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement).tagName === 'INPUT') return;
+      const step = 60;
+      if (e.key === 'ArrowLeft') {
+        setPosition((p) => ({ ...p, x: p.x + step }));
+      } else if (e.key === 'ArrowRight') {
+        setPosition((p) => ({ ...p, x: p.x - step }));
+      } else if (e.key === 'ArrowUp') {
+        setPosition((p) => ({ ...p, y: p.y + step }));
+      } else if (e.key === 'ArrowDown') {
+        setPosition((p) => ({ ...p, y: p.y - step }));
+      }
+    };
+    window.addEventListener('keydown', handleKeyPan);
+    return () => window.removeEventListener('keydown', handleKeyPan);
+  }, []);
 
   // Render Minimap
   const minimapWidth = 180;
@@ -310,9 +350,21 @@ export const TreeView: React.FC<TreeViewProps> = ({
       {/* Interactive Minimap */}
       {showMinimap && (
         <div
-          onClick={(e) => e.stopPropagation()}
-          className="absolute bottom-5 right-5 bg-white/95 backdrop-blur-sm border border-slate-200 shadow-md rounded-lg p-2 z-30 select-none hidden sm:block"
+          onClick={(e) => {
+            e.stopPropagation();
+            const rect = e.currentTarget.getBoundingClientRect();
+            const clickX = e.clientX - rect.left - 8;
+            const clickY = e.clientY - rect.top - 8;
+            const targetTreeX = clickX / minimapScale;
+            const targetTreeY = clickY / minimapScale;
+            setPosition({
+              x: containerW / 2 - targetTreeX * scale,
+              y: containerH / 2 - targetTreeY * scale,
+            });
+          }}
+          className="absolute bottom-5 right-5 bg-white/95 backdrop-blur-sm border border-slate-200 shadow-md rounded-lg p-2 z-30 select-none hidden sm:block cursor-pointer hover:border-sky-300 transition-colors"
           style={{ width: `${minimapWidth}px`, height: `${minimapHeight}px` }}
+          title="Click anywhere on minimap to jump"
         >
           <div className="relative w-full h-full bg-slate-50 rounded border border-slate-100 overflow-hidden">
             {/* Miniature nodes */}

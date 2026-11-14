@@ -51,9 +51,19 @@ export const PersonBox: React.FC<PersonBoxProps> = ({
         top: `${node.y}px`,
         width: `${node.width}px`,
         height: `${node.height}px`,
-        fontFamily: fontFamily || '"Noto Sans Malayalam", "Manjari", "Gayathri", sans-serif',
+        fontFamily: fontFamily || '"Noto Sans Malayalam", "Manjari", "Gayathri", "Kartika", "Rachana", "AnjaliOldLipi", system-ui, -apple-system, sans-serif',
       }}
     >
+      {/* Branch custom orientation pill if set */}
+      {node.hasChildren && node.branchDirection && node.branchDirection !== 'inherit' && (
+        <span
+          className="absolute -top-2 left-1.5 px-1 py-0.2 rounded text-[9px] font-semibold bg-sky-100 text-sky-800 border border-sky-300 shadow-xs"
+          title={`Branch arrangement: ${node.branchDirection}`}
+        >
+          {node.branchDirection === 'vertical' ? '↕ Col' : '↔ Row'}
+        </span>
+      )}
+
       {/* Box Name: Strictly person's name only (no emojis, human icons, or profile pictures) */}
       <div
         className={`w-full text-center break-words px-1.5 text-[12.5px] leading-snug tracking-normal ${
@@ -89,8 +99,12 @@ export const PersonBox: React.FC<PersonBoxProps> = ({
         </button>
       )}
 
-      {/* Quick hover action buttons */}
-      <div className="absolute -top-3 right-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1 z-20">
+      {/* Quick action buttons (Visible on hover and when selected on touch/mobile) */}
+      <div
+        className={`absolute -top-3 right-0 transition-opacity flex items-center space-x-1 z-20 ${
+          isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+        }`}
+      >
         <button
           onClick={(e) => {
             e.stopPropagation();

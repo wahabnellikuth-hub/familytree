@@ -20,7 +20,7 @@ export async function exportTreeImage(
   options: ExportOptions
 ): Promise<{ success: boolean; dataUrl?: string; error?: string }> {
   try {
-    const scale = options.scale || 2;
+    let scale = options.scale || 2;
     const format = options.format || 'png';
     const bgColor = options.backgroundColor || '#ffffff';
     const quality = options.quality ?? 0.95;
@@ -40,6 +40,12 @@ export async function exportTreeImage(
     const titlePadding = options.includeTitle !== false ? 60 : 0;
     const totalWidth = layout.bounds.width;
     const totalHeight = layout.bounds.height + titlePadding;
+
+    // Safe dimension cap to prevent browser canvas memory allocation failures on giant trees
+    const maxSafeDimension = 14000;
+    if (totalWidth * scale > maxSafeDimension || totalHeight * scale > maxSafeDimension) {
+      scale = Math.max(1, Math.min(scale, Math.floor(maxSafeDimension / Math.max(totalWidth, totalHeight))));
+    }
 
     // Create high-res canvas
     const canvas = document.createElement('canvas');
