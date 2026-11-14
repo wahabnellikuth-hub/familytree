@@ -1,0 +1,197 @@
+import { FamilyTreeData } from '../types';
+import { calculateTreeLayout } from './layoutEngine';
+
+export interface ExportOptions {
+  format: 'png' | 'jpeg';
+  scale: number; // 1 = 1x (standard), 2 = 2x (retina/print), 3 = 3x (high-res poster)
+  quality?: number; // 0.1 to 1.0 for jpeg
+  backgroundColor?: string;
+  excludePlaceholders?: boolean;
+  focusPersonId?: string | null;
+  includeTitle?: boolean;
+}
+
+/**
+ * Renders the entire family tree (or selected branch) to an offscreen high-resolution Canvas
+ * and triggers a download of PNG or JPG.
+ */
+export async function exportTreeImage(
+  tree: FamilyTreeData,
+  options: ExportOptions
+): Promise<{ success: boolean; dataUrl?: string; error?: string }> {
+  try {
+    const scale = options.scale || 2;
+    const format = options.format || 'png';
+    const bgColor = options.backgroundColor || '#ffffff';
+    const quality = options.quality ?? 0.95;
+
+    // Calculate complete layout coordinates (not just visible screen)
+    const layout = calculateTreeLayout(tree, {
+      layoutMode: tree.layoutMode,
+      focusPersonId: options.focusPersonId,
+      excludePlaceholders: options.excludePlaceholders,
+    });
+
+    if (layout.nodes.length === 0) {
+      return { success: false, error: 'No family members to export in the selected branch.' };
+    }
+
+    // Determine total dimensions with extra header padding if title is included
+    const titlePadding = options.includeTitle !== false ? 60 : 0;
+    const totalWidth = layout.bounds.width;
+    const totalHeight = layout.bounds.height + titlePadding;
+
+    // Create high-res canvas
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(totalWidth * scale);
+    canvas.height = Math.round(totalHeight * scale);
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      return { success: false, error: 'Failed to create 2D canvas rendering context.' };
+    }
+
+    // Set scale for high-DPI rendering
+    ctx.scale(scale, scale);
+
+    // Fill background
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, totalWidth, totalHeight);
+
+    // Optional Title header
+    if (options.includeTitle !== false) {
+      ctx.fillStyle = '#0f172a';
+      ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      const rootName = tree.people[options.focusPersonId || tree.rootPersonId]?.name || 'Lineage';
+      ctx.fillText(`${tree.title} — Lineage of ${rootName}`, 60, 36);
+
+      ctx.fillStyle = '#64748b';
+      ctx.font = '12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.fillText(`Paternal Lineage Chart • ${layout.nodes.length} members • Generated on ${new Date().toLocaleDateString()}`, 60, 58);
+    }
+
+    // Translate down if title padding is active
+    ctx.save();
+    ctx.translate(0, titlePadding);
+
+    // 1. Draw Orthogonal Connection Lines
+    ctx.strokeStyle = '#64748b'; // Slate 500
+    ctx.lineWidth = 1.75;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    for (const line of layout.lines) {
+      if (line.points.length < 2) continue;
+      ctx.beginPath();
+      ctx.moveTo(line.points[0].x, line.points[0].y);
+      for (let i = 1; i < line.points.length; i++) {
+        ctx.lineTo(line.points[i].x, line.points[i].y);
+      }
+      ctx.stroke();
+    }
+
+    // 2. Draw Rectangular Person Boxes (Pure minimal design: name only, no icons/emojis)
+    for (const node of layout.nodes) {
+      const x = node.x;
+      const y = node.y;
+      const w = node.width;
+      const h = node.height;
+      const radius = 5;
+
+      if (node.isPlaceholder) {
+        // Placeholder Box: dashed border, light muted fill
+        ctx.save();
+        ctx.setLineDash([4, 4]);
+        ctx.fillStyle = '#f8fafc'; // Slate 50
+        ctx.strokeStyle = '#94a3b8'; // Slate 400
+        ctx.lineWidth = 1.25;
+
+        drawRoundedRect(ctx, x, y, w, h, radius);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+
+        // Placeholder Text
+        ctx.fillStyle = '#64748b';
+        ctx.font = 'italic 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(node.name || 'Empty Box', x + w / 2, y + h / 2);
+      } else {
+        // Named Person Box: clean white background, crisp border
+        const isRoot = node.id === tree.rootPersonId;
+
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = isRoot ? '#0284c7' : '#94a3b8'; // Sky-600 for root, slate-400 for others
+        ctx.lineWidth = isRoot ? 2 : 1.25;
+
+        drawRoundedRect(ctx, x, y, w, h, radius);
+        ctx.fill();
+        ctx.stroke();
+
+        // Person Name (strictly name only, truncated if exceptionally long)
+        ctx.fillStyle = '#0f172a'; // Slate 900
+        ctx.font = isRoot
+          ? 'bold 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+          : '500 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        // Fit text within box
+        let displayText = node.name;
+        const maxTextWidth = w - 16;
+        if (ctx.measureText(displayText).width > maxTextWidth) {
+          while (displayText.length > 3 && ctx.measureText(displayText + '…').width > maxTextWidth) {
+            displayText = displayText.slice(0, -1);
+          }
+          displayText += '…';
+        }
+
+        ctx.fillText(displayText, x + w / 2, y + h / 2);
+      }
+    }
+
+    ctx.restore();
+
+    // Export to data URL or blob
+    const mimeType = format === 'jpeg' ? 'image/jpeg' : 'image/png';
+    const dataUrl = canvas.toDataURL(mimeType, quality);
+
+    // Trigger download
+    const link = document.createElement('a');
+    const cleanTitle = (tree.title || 'family-tree').toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+    link.download = `${cleanTitle}_${Date.now()}.${format === 'jpeg' ? 'jpg' : 'png'}`;
+    link.href = dataUrl;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    return { success: true, dataUrl };
+  } catch (err: any) {
+    console.error('Export error:', err);
+    return { success: false, error: err.message || 'Failed to export image.' };
+  }
+}
+
+function drawRoundedRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number
+): void {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
