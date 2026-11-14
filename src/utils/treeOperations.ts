@@ -1,6 +1,91 @@
 import { FamilyTreeData, Person, BranchDirection } from '../types';
 
 /**
+ * Deeply sanitizes and heals a tree structure, ensuring all required arrays,
+ * reciprocal relationships, and default values are strictly present.
+ * Prevents runtime crashes from Cloud database omission of empty arrays/nulls.
+ */
+export function sanitizeTreeData(tree: any): FamilyTreeData {
+  if (!tree || typeof tree !== 'object') {
+    throw new Error('Invalid tree data structure');
+  }
+
+  const rawPeople = tree.people || {};
+  const sanitizedPeople: Record<string, Person> = {};
+
+  // First pass: sanitize each person object with complete defaults
+  for (const [id, rawPerson] of Object.entries<any>(rawPeople)) {
+    if (!rawPerson) continue;
+    const personId = String(rawPerson.id || id);
+    sanitizedPeople[personId] = {
+      id: personId,
+      name: typeof rawPerson.name === 'string' && rawPerson.name.trim() ? rawPerson.name.trim() : 'Unnamed',
+      parentId: rawPerson.parentId ? String(rawPerson.parentId) : null,
+      childrenIds: Array.isArray(rawPerson.childrenIds)
+        ? rawPerson.childrenIds.map(String).filter(Boolean)
+        : [],
+      generation: typeof rawPerson.generation === 'number' && !isNaN(rawPerson.generation) ? rawPerson.generation : 1,
+      isPlaceholder: Boolean(rawPerson.isPlaceholder),
+      branchDirection: (['inherit', 'horizontal', 'vertical'].includes(rawPerson.branchDirection))
+        ? rawPerson.branchDirection
+        : 'inherit',
+    };
+  }
+
+  // Second pass: heal reciprocal father-son relationships and clean broken links
+  for (const [id, person] of Object.entries(sanitizedPeople)) {
+    // Filter out children IDs that do not exist in people map
+    person.childrenIds = (person.childrenIds || []).filter((cid) => !!sanitizedPeople[cid]);
+
+    // Ensure children point back to this father
+    for (const cid of person.childrenIds) {
+      if (sanitizedPeople[cid]) {
+        sanitizedPeople[cid].parentId = id;
+      }
+    }
+  }
+
+  // Ensure root exists
+  let rootId = tree.rootPersonId;
+  if (!rootId || !sanitizedPeople[rootId]) {
+    // Find node with no parent, or first node
+    const candidateRoot = Object.values(sanitizedPeople).find((p) => p.parentId === null);
+    if (candidateRoot) {
+      rootId = candidateRoot.id;
+    } else {
+      rootId = Object.keys(sanitizedPeople)[0] || `p_root_${Date.now()}`;
+      if (!sanitizedPeople[rootId]) {
+        sanitizedPeople[rootId] = {
+          id: rootId,
+          name: 'Grandfather',
+          parentId: null,
+          childrenIds: [],
+          generation: 1,
+        };
+      }
+    }
+  }
+
+  if (sanitizedPeople[rootId]) {
+    sanitizedPeople[rootId].parentId = null;
+  }
+
+  return {
+    id: String(tree.id || `tree_${Date.now()}`),
+    title: String(tree.title || 'Family Tree'),
+    rootPersonId: rootId,
+    people: sanitizedPeople,
+    layoutMode: tree.layoutMode === 'horizontal' ? 'horizontal' : 'vertical',
+    collapsedBranchIds: Array.isArray(tree.collapsedBranchIds)
+      ? tree.collapsedBranchIds.map(String).filter(Boolean)
+      : [],
+    fontFamily: tree.fontFamily || 'Noto Sans Malayalam',
+    createdAt: typeof tree.createdAt === 'number' ? tree.createdAt : Date.now(),
+    updatedAt: typeof tree.updatedAt === 'number' ? tree.updatedAt : Date.now(),
+  };
+}
+
+/**
  * Validates a family tree:
  * 1. Has rootPersonId and root exists
  * 2. Root has no parent (parentId === null)
@@ -31,7 +116,7 @@ export function validateTree(tree: FamilyTreeData): { valid: boolean; error?: st
     }
 
     // Verify children exist
-    for (const childId of person.childrenIds) {
+    for (const childId of (person.childrenIds || [])) {
       const child = tree.people[childId];
       if (!child) {
         return { valid: false, error: `Person "${person.name}" references non-existent child ${childId}.` };
@@ -52,7 +137,7 @@ export function validateTree(tree: FamilyTreeData): { valid: boolean; error?: st
 
     const person = tree.people[currentId];
     if (person) {
-      for (const childId of person.childrenIds) {
+      for (const childId of (person.childrenIds || [])) {
         if (!visited.has(childId)) {
           if (hasCycle(childId)) return true;
         } else if (recStack.has(childId)) {
@@ -77,12 +162,13 @@ export function validateTree(tree: FamilyTreeData): { valid: boolean; error?: st
  */
 export function countSubtreeDescendants(people: Record<string, Person>, personId: string): number {
   const person = people[personId];
-  if (!person || !person.childrenIds || person.childrenIds.length === 0) {
+  const children = person?.childrenIds || [];
+  if (children.length === 0) {
     return 0;
   }
 
-  let count = person.childrenIds.length;
-  for (const childId of person.childrenIds) {
+  let count = children.length;
+  for (const childId of children) {
     count += countSubtreeDescendants(people, childId);
   }
   return count;
@@ -99,7 +185,7 @@ export function getDescendantIds(people: Record<string, Person>, personId: strin
     const currentId = stack.pop()!;
     result.add(currentId);
     const child = people[currentId];
-    if (child && child.childrenIds) {
+    if (child && Array.isArray(child.childrenIds)) {
       stack.push(...child.childrenIds);
     }
   }
@@ -133,7 +219,7 @@ function recalculateGenerations(
   const person = people[personId];
   if (!person) return;
   person.generation = currentGen;
-  for (const childId of person.childrenIds) {
+  for (const childId of (person.childrenIds || [])) {
     recalculateGenerations(people, childId, currentGen + 1);
   }
 }
@@ -151,7 +237,7 @@ export function addChildren(
   if (!father) return tree;
 
   const newPeople = { ...tree.people };
-  const newChildrenIds = [...father.childrenIds];
+  const newChildrenIds = [...(father.childrenIds || [])];
 
   const now = Date.now();
   for (let i = 0; i < names.length; i++) {
@@ -271,21 +357,22 @@ export function deletePerson(
     if (fatherId && newPeople[fatherId]) {
       newPeople[fatherId] = {
         ...newPeople[fatherId],
-        childrenIds: newPeople[fatherId].childrenIds.filter((cid) => cid !== personId),
+        childrenIds: (newPeople[fatherId].childrenIds || []).filter((cid) => cid !== personId),
       };
     }
   } else {
     // Keep children: re-parent children to grandfather
     if (fatherId && newPeople[fatherId]) {
       const father = newPeople[fatherId];
-      const personIndex = father.childrenIds.indexOf(personId);
-      const newChildren = [...father.childrenIds];
+      const personIndex = (father.childrenIds || []).indexOf(personId);
+      const newChildren = [...(father.childrenIds || [])];
 
       // Replace personId in father's childrenIds with person's childrenIds
+      const personKids = person.childrenIds || [];
       if (personIndex !== -1) {
-        newChildren.splice(personIndex, 1, ...person.childrenIds);
+        newChildren.splice(personIndex, 1, ...personKids);
       } else {
-        newChildren.push(...person.childrenIds);
+        newChildren.push(...personKids);
       }
 
       newPeople[fatherId] = {
@@ -294,7 +381,7 @@ export function deletePerson(
       };
 
       // Update parentId and generation of each child
-      for (const childId of person.childrenIds) {
+      for (const childId of personKids) {
         if (newPeople[childId]) {
           newPeople[childId] = {
             ...newPeople[childId],
@@ -378,14 +465,14 @@ export function movePerson(
   if (oldFatherId && newPeople[oldFatherId]) {
     newPeople[oldFatherId] = {
       ...newPeople[oldFatherId],
-      childrenIds: newPeople[oldFatherId].childrenIds.filter((id) => id !== personId),
+      childrenIds: (newPeople[oldFatherId].childrenIds || []).filter((id) => id !== personId),
     };
   }
 
   // Add to new father
   newPeople[newFatherId] = {
     ...newFather,
-    childrenIds: [...newFather.childrenIds, personId],
+    childrenIds: [...(newFather.childrenIds || []), personId],
   };
 
   // Update person's parentId
@@ -446,4 +533,3 @@ export function toggleBranchCollapse(tree: FamilyTreeData, personId: string): Fa
     collapsedBranchIds: newCollapsed,
   };
 }
-

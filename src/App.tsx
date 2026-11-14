@@ -53,12 +53,16 @@ export const App: React.FC = () => {
   // Check last active tree on mount
   useEffect(() => {
     async function init() {
-      const lastId = await getLastActiveTreeId();
-      if (lastId) {
-        const loaded = await getTree(lastId);
-        if (loaded) {
-          setActiveTree(loaded);
+      try {
+        const lastId = await getLastActiveTreeId();
+        if (lastId) {
+          const loaded = await getTree(lastId);
+          if (loaded) {
+            setActiveTree(loaded);
+          }
         }
+      } catch (err) {
+        console.error('Failed to init last active tree:', err);
       }
     }
     init();
@@ -149,10 +153,19 @@ export const App: React.FC = () => {
         bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0, width: 0, height: 0 },
       };
     }
-    return calculateTreeLayout(activeTree, {
-      layoutMode: activeTree.layoutMode,
-      focusPersonId: focusedBranchId,
-    });
+    try {
+      return calculateTreeLayout(activeTree, {
+        layoutMode: activeTree.layoutMode,
+        focusPersonId: focusedBranchId,
+      });
+    } catch (err) {
+      console.error('Layout computation error:', err);
+      return {
+        nodes: [],
+        lines: [],
+        bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0, width: 0, height: 0 },
+      };
+    }
   }, [activeTree, focusedBranchId]);
 
   // Highlighted branch IDs (selected person, their descendants, and ancestor path)

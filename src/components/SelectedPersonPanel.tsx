@@ -55,6 +55,7 @@ export const SelectedPersonPanel: React.FC<SelectedPersonPanelProps> = ({
   const father = person.parentId ? tree.people[person.parentId] : null;
   const totalDescendants = countSubtreeDescendants(tree.people, personId);
   const isCollapsed = (tree.collapsedBranchIds || []).includes(personId);
+  const childrenList = person.childrenIds || [];
 
   // Generation label
   const getGenerationLabel = (gen: number) => {
@@ -106,7 +107,7 @@ export const SelectedPersonPanel: React.FC<SelectedPersonPanelProps> = ({
 
           <div className="flex justify-between items-center">
             <span className="text-slate-500">Immediate Sons</span>
-            <span className="font-semibold text-slate-800">{person.childrenIds.length}</span>
+            <span className="font-semibold text-slate-800">{childrenList.length}</span>
           </div>
 
           <div className="flex justify-between items-center">
@@ -122,7 +123,7 @@ export const SelectedPersonPanel: React.FC<SelectedPersonPanelProps> = ({
         </div>
 
         {/* Per-Father Branch Arrangement (Horizontal vs Vertical for sons) */}
-        {person.childrenIds.length > 0 && (
+        {childrenList.length > 0 && (
           <div className="bg-slate-50 p-3 rounded-lg border border-slate-200/80 space-y-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">
               Sons Arrangement (മക്കളുടെ ക്രമീകരണം)
@@ -223,13 +224,13 @@ export const SelectedPersonPanel: React.FC<SelectedPersonPanelProps> = ({
           </button>
 
           {/* Sibling Order */}
-          {person.childrenIds.length > 1 && (
+          {childrenList.length > 1 && (
             <button
               onClick={() => onReorderChildren(personId)}
               className="w-full flex items-center px-3 py-2 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 rounded-md border border-slate-200 transition-all text-left shadow-sm"
             >
               <ArrowUpDown className="w-4 h-4 mr-2.5 text-slate-500 flex-shrink-0" />
-              <span>Rearrange Sibling Order ({person.childrenIds.length})</span>
+              <span>Rearrange Sibling Order ({childrenList.length})</span>
             </button>
           )}
 
@@ -245,7 +246,7 @@ export const SelectedPersonPanel: React.FC<SelectedPersonPanelProps> = ({
           )}
 
           {/* Collapse / Expand Branch */}
-          {person.childrenIds.length > 0 && (
+          {childrenList.length > 0 && (
             <button
               onClick={() => onToggleCollapse(personId)}
               className="w-full flex items-center px-3 py-2 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 rounded-md border border-slate-200 transition-all text-left shadow-sm"
@@ -263,7 +264,7 @@ export const SelectedPersonPanel: React.FC<SelectedPersonPanelProps> = ({
                 className="w-full flex items-center px-3 py-2 text-xs font-medium text-red-600 bg-white hover:bg-red-50 rounded-md border border-red-200 hover:border-red-300 transition-all text-left shadow-sm"
               >
                 <Trash2 className="w-4 h-4 mr-2.5 text-red-500 flex-shrink-0" />
-                <span>Delete {person.childrenIds.length > 0 ? 'Person / Branch' : 'Person'}</span>
+                <span>Delete {childrenList.length > 0 ? 'Person / Branch' : 'Person'}</span>
               </button>
             </div>
           )}

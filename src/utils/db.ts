@@ -1,6 +1,6 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { FamilyTreeData, TreeMeta } from '../types';
-import { validateTree } from './treeOperations';
+import { validateTree, sanitizeTreeData } from './treeOperations';
 import {
   saveTreeToCloud,
   getTreeFromCloud,
@@ -88,7 +88,8 @@ export async function getTree(id: string): Promise<FamilyTreeData | null> {
   let localTree: FamilyTreeData | null = null;
   try {
     const db = await getDB();
-    localTree = (await db.get('trees', id)) || null;
+    const rawLocal = (await db.get('trees', id)) || null;
+    localTree = rawLocal ? sanitizeTreeData(rawLocal) : null;
   } catch (err) {
     console.error(`Failed to load tree ${id} from IndexedDB:`, err);
   }
@@ -97,26 +98,28 @@ export async function getTree(id: string): Promise<FamilyTreeData | null> {
   try {
     const cloudTree = await getTreeFromCloud(id);
     if (cloudTree) {
-      if (!localTree || cloudTree.updatedAt > localTree.updatedAt) {
+      const sanitizedCloud = sanitizeTreeData(cloudTree);
+      if (!localTree || sanitizedCloud.updatedAt > localTree.updatedAt) {
         // Cache to local IndexedDB
         const db = await getDB();
-        await db.put('trees', cloudTree);
-        return cloudTree;
+        await db.put('trees', sanitizedCloud);
+        return sanitizedCloud;
       }
     }
   } catch (err) {
     console.warn('Firebase Cloud load error:', err);
   }
 
-  return localTree;
+  return localTree ? sanitizeTreeData(localTree) : null;
 }
 
 /**
  * Saves a family tree to both local IndexedDB and Firebase Cloud.
  */
 export async function saveTree(tree: FamilyTreeData): Promise<boolean> {
+  const sanitized = sanitizeTreeData(tree);
   const toSave: FamilyTreeData = {
-    ...tree,
+    ...sanitized,
     updatedAt: Date.now(),
   };
 
@@ -223,7 +226,8 @@ export function exportTreeAsJSON(tree: FamilyTreeData): string {
  */
 export function parseAndValidateTreeJSON(jsonStr: string): { valid: boolean; tree?: FamilyTreeData; error?: string } {
   try {
-    const data = JSON.parse(jsonStr) as FamilyTreeData;
+    const raw = JSON.parse(jsonStr);
+    const data = sanitizeTreeData(raw);
     const validation = validateTree(data);
     if (!validation.valid) {
       return { valid: false, error: validation.error };

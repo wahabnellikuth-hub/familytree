@@ -1,5 +1,5 @@
 import { FamilyTreeData, LayoutMode, NodePosition, TreeConnectionLine, TreeLayoutResult, BranchDirection } from '../types';
-import { countSubtreeDescendants } from './treeOperations';
+import { countSubtreeDescendants, sanitizeTreeData } from './treeOperations';
 
 export const BASE_BOX_WIDTH = 150;
 export const BASE_BOX_HEIGHT = 46;
@@ -103,7 +103,7 @@ function layoutSubtreeFlexible(
   const dims = computeNodeDimensions(person?.name || '', person?.isPlaceholder);
   const halfW = dims.width / 2;
 
-  const rawChildren = !isCollapsed && person ? person.childrenIds : [];
+  const rawChildren = !isCollapsed && person && Array.isArray(person.childrenIds) ? person.childrenIds : [];
   const visibleChildren = rawChildren.filter((cid) => !!tree.people[cid]);
 
   if (visibleChildren.length === 0) {
@@ -280,7 +280,7 @@ function layoutSubtreeHorizontal(
   const dims = computeNodeDimensions(person?.name || '', person?.isPlaceholder);
   const halfH = dims.height / 2;
 
-  const rawChildren = !isCollapsed && person ? person.childrenIds : [];
+  const rawChildren = !isCollapsed && person && Array.isArray(person.childrenIds) ? person.childrenIds : [];
   const visibleChildren = rawChildren.filter((cid) => !!tree.people[cid]);
 
   if (visibleChildren.length === 0) {
@@ -437,10 +437,11 @@ export function calculateTreeLayout(
     excludePlaceholders?: boolean;
   }
 ): TreeLayoutResult {
-  const mode = options?.layoutMode || tree.layoutMode || 'vertical';
-  const startPersonId = options?.focusPersonId || tree.rootPersonId;
+  const safeTree = sanitizeTreeData(tree);
+  const mode = options?.layoutMode || safeTree.layoutMode || 'vertical';
+  const startPersonId = options?.focusPersonId || safeTree.rootPersonId;
 
-  if (!tree.people[startPersonId]) {
+  if (!safeTree.people[startPersonId]) {
     return {
       nodes: [],
       lines: [],
@@ -448,13 +449,13 @@ export function calculateTreeLayout(
     };
   }
 
-  const collapsedSet = new Set(tree.collapsedBranchIds || []);
+  const collapsedSet = new Set(safeTree.collapsedBranchIds || []);
 
   let rootSubtree: SubtreeLayout;
   if (mode === 'horizontal') {
-    rootSubtree = layoutSubtreeHorizontal(tree, startPersonId, collapsedSet);
+    rootSubtree = layoutSubtreeHorizontal(safeTree, startPersonId, collapsedSet);
   } else {
-    rootSubtree = layoutSubtreeFlexible(tree, startPersonId, collapsedSet, mode);
+    rootSubtree = layoutSubtreeFlexible(safeTree, startPersonId, collapsedSet, mode);
   }
 
   // Flatten nodes
@@ -496,7 +497,7 @@ export function calculateTreeLayout(
   const nodes: NodePosition[] = [];
 
   for (const n of rawNodes) {
-    const person = tree.people[n.id];
+    const person = safeTree.people[n.id];
     if (!person) continue;
 
     if (options?.excludePlaceholders && person.isPlaceholder) {
@@ -508,8 +509,8 @@ export function calculateTreeLayout(
     nodeMap.set(n.id, { x: finalX, y: finalY, width: n.width, height: n.height });
 
     const isCollapsed = collapsedSet.has(n.id);
-    const hasChildren = person.childrenIds.length > 0;
-    const totalDesc = countSubtreeDescendants(tree.people, n.id);
+    const hasChildren = (person.childrenIds || []).length > 0;
+    const totalDesc = countSubtreeDescendants(safeTree.people, n.id);
 
     nodes.push({
       id: n.id,
@@ -524,7 +525,7 @@ export function calculateTreeLayout(
       isCollapsed,
       totalDescendants: totalDesc,
       parentId: person.parentId,
-      childrenIds: person.childrenIds,
+      childrenIds: person.childrenIds || [],
       branchDirection: person.branchDirection,
     });
   }
@@ -533,10 +534,10 @@ export function calculateTreeLayout(
   const lines: TreeConnectionLine[] = [];
 
   for (const node of nodes) {
-    const person = tree.people[node.id];
+    const person = safeTree.people[node.id];
     if (!person || collapsedSet.has(node.id)) continue;
 
-    const visibleChildren = person.childrenIds
+    const visibleChildren = (person.childrenIds || [])
       .map((cid) => ({ id: cid, pos: nodeMap.get(cid) }))
       .filter((c): c is { id: string; pos: { x: number; y: number; width: number; height: number } } => c.pos !== undefined);
 

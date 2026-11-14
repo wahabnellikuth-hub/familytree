@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore';
 import { getDatabase, ref, set, get, remove } from 'firebase/database';
 import { FamilyTreeData, TreeMeta } from '../types';
+import { sanitizeTreeData } from './treeOperations';
 
 export const firebaseConfig = {
   apiKey: "AIzaSyB0huYIbDz-7mRCzLleh1SyyM6A770GF_4",
@@ -87,7 +88,7 @@ export async function getTreeFromCloud(id: string): Promise<FamilyTreeData | nul
     const treeRef = ref(rtdb, `${RTDB_ROOT}/${id}`);
     const snapshot = await get(treeRef);
     if (snapshot.exists()) {
-      return snapshot.val() as FamilyTreeData;
+      return sanitizeTreeData(snapshot.val());
     }
   } catch (err) {
     console.warn('Realtime Database load note:', err);
@@ -98,7 +99,7 @@ export async function getTreeFromCloud(id: string): Promise<FamilyTreeData | nul
     const docRef = doc(db, FIRESTORE_COLLECTION, id);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
-      return docSnap.data() as FamilyTreeData;
+      return sanitizeTreeData(docSnap.data());
     }
   } catch (err) {
     console.warn('Firestore load note:', err);
