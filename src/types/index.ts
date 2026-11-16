@@ -1,6 +1,6 @@
 export type LayoutMode = 'vertical' | 'horizontal' | 'hybrid';
 
-export type BranchDirection = 'inherit' | 'horizontal' | 'vertical';
+export type BranchDirection = 'inherit' | 'horizontal' | 'vertical' | 'rays' | 'staggered';
 
 export interface Person {
   id: string;

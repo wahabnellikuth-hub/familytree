@@ -77,9 +77,11 @@ interface SubtreeLayout {
 function resolveChildrenDirection(
   nodeBranchDir: BranchDirection | undefined,
   globalMode: LayoutMode
-): 'horizontal' | 'vertical' {
+): 'horizontal' | 'vertical' | 'rays' | 'staggered' {
   if (nodeBranchDir === 'vertical') return 'vertical';
   if (nodeBranchDir === 'horizontal') return 'horizontal';
+  if (nodeBranchDir === 'rays') return 'rays';
+  if (nodeBranchDir === 'staggered') return 'staggered';
   // Inherit from global mode: in vertical/hybrid mode, default sibling expansion is horizontal; in horizontal mode, vertical.
   return globalMode === 'horizontal' ? 'vertical' : 'horizontal';
 }
@@ -123,14 +125,129 @@ function layoutSubtreeFlexible(
 
   // Determine how this father wants his direct children arranged
   const childrenDir = resolveChildrenDirection(person?.branchDirection, globalMode);
-  const isVerticallyStacked = childrenDir === 'vertical';
 
   // Recursively lay out all children
   const laidOutChildren: SubtreeLayout[] = visibleChildren.map((cid) =>
     layoutSubtreeFlexible(tree, cid, collapsedSet, globalMode, depth + 1)
   );
 
-  if (!isVerticallyStacked) {
+  if (childrenDir === 'rays') {
+    // -------------------------------------------------------------
+    // SUN RAYS / RIGHT-SIDE HORIZONTAL FAN (Upper, Straight, Below)
+    // Arranges sons from the right side of the father's box
+    // -------------------------------------------------------------
+    const childLeftTargetX = halfW + 54;
+    const childHeights = laidOutChildren.map((c) => getSubtreeBoundingBox(c).height);
+    const totalSubtreeH = childHeights.reduce((a, b) => a + b, 0) + (laidOutChildren.length - 1) * VERTICAL_SIBLING_GAP;
+    let currentY = dims.height / 2 - totalSubtreeH / 2;
+    let maxChildSubtreeRight = halfW;
+
+    for (let i = 0; i < laidOutChildren.length; i++) {
+      const child = laidOutChildren[i];
+      const bbox = getSubtreeBoundingBox(child);
+      shiftSubtreeX(child, childLeftTargetX + child.width / 2);
+      shiftSubtreeY(child, currentY - bbox.minY);
+
+      currentY += bbox.height + VERTICAL_SIBLING_GAP;
+      const newBBox = getSubtreeBoundingBox(child);
+      maxChildSubtreeRight = Math.max(maxChildSubtreeRight, newBBox.maxX);
+    }
+
+    const leftContour: number[] = [-halfW, -halfW];
+    const rightContour: number[] = [maxChildSubtreeRight, maxChildSubtreeRight];
+
+    return {
+      id: nodeId,
+      x: 0,
+      y: depth * (BASE_BOX_HEIGHT + VERTICAL_GEN_GAP),
+      width: dims.width,
+      height: dims.height,
+      leftContour,
+      rightContour,
+      children: laidOutChildren,
+      totalDescendants,
+      branchDirection: person?.branchDirection || 'inherit',
+      isVerticallyStackedChildren: false,
+    };
+  } else if (childrenDir === 'staggered') {
+    // -------------------------------------------------------------
+    // SINGLE-LINE STAGGERED (Trunk drop with 25%, 50%, 75%, 100% taps)
+    // -------------------------------------------------------------
+    let currentYOffset = VERTICAL_GEN_GAP + dims.height;
+    let maxChildSubtreeRight = halfW;
+
+    for (let i = 0; i < laidOutChildren.length; i++) {
+      const child = laidOutChildren[i];
+      // Indent children slightly to the right of trunk drop line (x = 0)
+      shiftSubtreeX(child, 30 + child.width / 2);
+      shiftSubtreeY(child, currentYOffset);
+
+      const childSubtreeHeight = getSubtreeBoundingBox(child).height;
+      currentYOffset += childSubtreeHeight + VERTICAL_SIBLING_GAP;
+
+      const bbox = getSubtreeBoundingBox(child);
+      maxChildSubtreeRight = Math.max(maxChildSubtreeRight, bbox.maxX);
+    }
+
+    const leftContour: number[] = [-halfW, 0];
+    const rightContour: number[] = [halfW, maxChildSubtreeRight];
+
+    return {
+      id: nodeId,
+      x: 0,
+      y: depth * (BASE_BOX_HEIGHT + VERTICAL_GEN_GAP),
+      width: dims.width,
+      height: dims.height,
+      leftContour,
+      rightContour,
+      children: laidOutChildren,
+      totalDescendants,
+      branchDirection: person?.branchDirection || 'inherit',
+      isVerticallyStackedChildren: true,
+    };
+  } else if (childrenDir === 'vertical') {
+    // -------------------------------------------------------------
+    // VERTICAL SIBLING STACK (Column of brothers under this father)
+    // -------------------------------------------------------------
+    // In this mode, siblings are stacked one under another along Y.
+    // Each sibling's Y starts below the previous sibling's complete subtree.
+    let currentYOffset = VERTICAL_GEN_GAP + dims.height;
+    let maxChildSubtreeRight = halfW;
+    let minChildSubtreeLeft = -halfW;
+
+    for (let i = 0; i < laidOutChildren.length; i++) {
+      const child = laidOutChildren[i];
+      // Position child in the vertical column aligned with father at x = 0
+      shiftSubtreeY(child, currentYOffset);
+
+      // Measure height of this child's subtree to offset next sibling
+      const childSubtreeHeight = getSubtreeBoundingBox(child).height;
+      currentYOffset += childSubtreeHeight + VERTICAL_SIBLING_GAP;
+
+      // Track horizontal extents
+      const bbox = getSubtreeBoundingBox(child);
+      minChildSubtreeLeft = Math.min(minChildSubtreeLeft, bbox.minX);
+      maxChildSubtreeRight = Math.max(maxChildSubtreeRight, bbox.maxX);
+    }
+
+    // Build contours
+    const leftContour: number[] = [-halfW, minChildSubtreeLeft];
+    const rightContour: number[] = [halfW, maxChildSubtreeRight];
+
+    return {
+      id: nodeId,
+      x: 0,
+      y: depth * (BASE_BOX_HEIGHT + VERTICAL_GEN_GAP),
+      width: dims.width,
+      height: dims.height,
+      leftContour,
+      rightContour,
+      children: laidOutChildren,
+      totalDescendants,
+      branchDirection: person?.branchDirection || 'inherit',
+      isVerticallyStackedChildren: true,
+    };
+  } else {
     // -------------------------------------------------------------
     // HORIZONTAL SIBLING ARRANGEMENT (Side-by-side)
     // -------------------------------------------------------------
@@ -217,49 +334,6 @@ function layoutSubtreeFlexible(
       totalDescendants,
       branchDirection: person?.branchDirection || 'inherit',
       isVerticallyStackedChildren: false,
-    };
-  } else {
-    // -------------------------------------------------------------
-    // VERTICAL SIBLING STACK (Column of brothers under this father)
-    // -------------------------------------------------------------
-    // In this mode, siblings are stacked one under another along Y.
-    // Each sibling's Y starts below the previous sibling's complete subtree.
-    let currentYOffset = VERTICAL_GEN_GAP + dims.height;
-    let maxChildSubtreeRight = halfW;
-    let minChildSubtreeLeft = -halfW;
-
-    for (let i = 0; i < laidOutChildren.length; i++) {
-      const child = laidOutChildren[i];
-      // Position child in the vertical column
-      // Child x is aligned at x = 0 (or slightly indented for clarity)
-      shiftSubtreeY(child, currentYOffset);
-
-      // Measure height of this child's subtree to offset next sibling
-      const childSubtreeHeight = getSubtreeBoundingBox(child).height;
-      currentYOffset += childSubtreeHeight + VERTICAL_SIBLING_GAP;
-
-      // Track horizontal extents
-      const bbox = getSubtreeBoundingBox(child);
-      minChildSubtreeLeft = Math.min(minChildSubtreeLeft, bbox.minX);
-      maxChildSubtreeRight = Math.max(maxChildSubtreeRight, bbox.maxX);
-    }
-
-    // Build contours
-    const leftContour: number[] = [-halfW, minChildSubtreeLeft];
-    const rightContour: number[] = [halfW, maxChildSubtreeRight];
-
-    return {
-      id: nodeId,
-      x: 0,
-      y: depth * (BASE_BOX_HEIGHT + VERTICAL_GEN_GAP),
-      width: dims.width,
-      height: dims.height,
-      leftContour,
-      rightContour,
-      children: laidOutChildren,
-      totalDescendants,
-      branchDirection: person?.branchDirection || 'inherit',
-      isVerticallyStackedChildren: true,
     };
   }
 }
@@ -571,17 +645,112 @@ export function calculateTreeLayout(
       }
     } else if (childrenDir === 'vertical') {
       // -----------------------------------------------------------
-      // Vertical stacked branch lines under this father
+      // Direct Vertical column under this father:
+      // - Direct 90° straight vertical line down to first son
+      // - Clean, compact side rail for subsequent sons
       // -----------------------------------------------------------
-      // Parent bottom center connects to a vertical spine running down the left side of the siblings
       const parentBottomX = node.x + node.width / 2;
       const parentBottomY = node.y + node.height;
+      const firstChild = visibleChildren[0];
+      const firstChildTopX = firstChild.pos.x + firstChild.pos.width / 2;
+      const firstChildTopY = firstChild.pos.y;
+      const midY = Math.round((parentBottomY + firstChildTopY) / 2);
 
-      // Children are vertically stacked
-      const minChildX = Math.min(...visibleChildren.map((c) => c.pos.x));
-      const spineX = Math.min(parentBottomX - 20, minChildX - 20);
-      const topChildY = visibleChildren[0].pos.y;
-      const midY = Math.round((parentBottomY + topChildY) / 2);
+      // Line to First Son: DIRECT 90-DEGREE STRAIGHT VERTICAL LINE!
+      if (Math.abs(parentBottomX - firstChildTopX) <= 4) {
+        // Pure 90° straight vertical line directly into first son top center!
+        lines.push({
+          id: `line_${node.id}_${firstChild.id}`,
+          fromId: node.id,
+          toId: firstChild.id,
+          points: [
+            { x: parentBottomX, y: parentBottomY },
+            { x: parentBottomX, y: firstChildTopY },
+          ],
+        });
+      } else {
+        // Clean centered 90° step if boxes differ slightly in width
+        lines.push({
+          id: `line_${node.id}_${firstChild.id}`,
+          fromId: node.id,
+          toId: firstChild.id,
+          points: [
+            { x: parentBottomX, y: parentBottomY },
+            { x: parentBottomX, y: midY },
+            { x: firstChildTopX, y: midY },
+            { x: firstChildTopX, y: firstChildTopY },
+          ],
+        });
+      }
+
+      // Subsequent sons: tidy, close side rail (not taking long detour!)
+      if (visibleChildren.length > 1) {
+        const minChildLeftX = Math.min(...visibleChildren.map((c) => c.pos.x));
+        const sideRailX = minChildLeftX - 16;
+
+        for (let i = 1; i < visibleChildren.length; i++) {
+          const child = visibleChildren[i];
+          const childMidY = child.pos.y + child.pos.height / 2;
+          const childLeftX = child.pos.x;
+
+          lines.push({
+            id: `line_${node.id}_${child.id}`,
+            fromId: node.id,
+            toId: child.id,
+            points: [
+              { x: parentBottomX, y: midY },
+              { x: sideRailX, y: midY },
+              { x: sideRailX, y: childMidY },
+              { x: childLeftX, y: childMidY },
+            ],
+          });
+        }
+      }
+    } else if (childrenDir === 'rays') {
+      // -----------------------------------------------------------
+      // SUN RAYS / RIGHT-SIDE HORIZONTAL FAN
+      // Connect from Father Right Edge into Sons Left Edge (upper, straight, below)
+      // -----------------------------------------------------------
+      const parentRightX = node.x + node.width;
+      const parentRightY = node.y + node.height / 2;
+
+      for (const child of visibleChildren) {
+        const childLeftX = child.pos.x;
+        const childLeftY = child.pos.y + child.pos.height / 2;
+
+        if (Math.abs(parentRightY - childLeftY) <= 4) {
+          // Straight horizontal ray (➡)
+          lines.push({
+            id: `line_${node.id}_${child.id}`,
+            fromId: node.id,
+            toId: child.id,
+            points: [
+              { x: parentRightX, y: parentRightY },
+              { x: childLeftX, y: childLeftY },
+            ],
+          });
+        } else {
+          // Angled ray step (↗ Upper, ↘ Lower)
+          const midX = Math.round(parentRightX + (childLeftX - parentRightX) * 0.45);
+          lines.push({
+            id: `line_${node.id}_${child.id}`,
+            fromId: node.id,
+            toId: child.id,
+            points: [
+              { x: parentRightX, y: parentRightY },
+              { x: midX, y: parentRightY },
+              { x: midX, y: childLeftY },
+              { x: childLeftX, y: childLeftY },
+            ],
+          });
+        }
+      }
+    } else if (childrenDir === 'staggered') {
+      // -----------------------------------------------------------
+      // SINGLE-LINE STAGGERED (Trunk line with 25%, 50%, 75%, 100% taps)
+      // -----------------------------------------------------------
+      const trunkX = node.x + node.width / 2;
+      const parentBottomY = node.y + node.height;
 
       for (const child of visibleChildren) {
         const childMidY = child.pos.y + child.pos.height / 2;
@@ -592,10 +761,8 @@ export function calculateTreeLayout(
           fromId: node.id,
           toId: child.id,
           points: [
-            { x: parentBottomX, y: parentBottomY },
-            { x: parentBottomX, y: midY },
-            { x: spineX, y: midY },
-            { x: spineX, y: childMidY },
+            { x: trunkX, y: parentBottomY },
+            { x: trunkX, y: childMidY },
             { x: childLeftX, y: childMidY },
           ],
         });

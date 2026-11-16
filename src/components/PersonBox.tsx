@@ -57,10 +57,22 @@ export const PersonBox: React.FC<PersonBoxProps> = ({
       {/* Branch custom orientation pill if set */}
       {node.hasChildren && node.branchDirection && node.branchDirection !== 'inherit' && (
         <span
-          className="absolute -top-2 left-1.5 px-1 py-0.2 rounded text-[9px] font-semibold bg-sky-100 text-sky-800 border border-sky-300 shadow-xs"
+          className={`absolute -top-2 left-1.5 px-1 py-0.2 rounded text-[9px] font-semibold border shadow-xs ${
+            node.branchDirection === 'rays'
+              ? 'bg-amber-100 text-amber-800 border-amber-300'
+              : node.branchDirection === 'staggered'
+              ? 'bg-indigo-100 text-indigo-800 border-indigo-300'
+              : 'bg-sky-100 text-sky-800 border-sky-300'
+          }`}
           title={`Branch arrangement: ${node.branchDirection}`}
         >
-          {node.branchDirection === 'vertical' ? '↕ Col' : '↔ Row'}
+          {node.branchDirection === 'vertical'
+            ? '↕ Col'
+            : node.branchDirection === 'rays'
+            ? '☀️ Rays'
+            : node.branchDirection === 'staggered'
+            ? '⑂ Line'
+            : '↔ Row'}
         </span>
       )}
 
