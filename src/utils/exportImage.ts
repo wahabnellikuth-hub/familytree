@@ -97,6 +97,11 @@ export async function exportTreeImage(
 
     for (const line of layout.lines) {
       if (line.points.length < 2) continue;
+      ctx.save();
+      if (line.isDashed) {
+        ctx.setLineDash([5, 4]);
+        ctx.strokeStyle = '#d97706';
+      }
       ctx.beginPath();
       ctx.moveTo(line.points[0].x, line.points[0].y);
       for (let i = 1; i < line.points.length; i++) {
@@ -107,8 +112,9 @@ export async function exportTreeImage(
       if (line.hasArrow) {
         const pPenultimate = line.points[line.points.length - 2];
         const pLast = line.points[line.points.length - 1];
-        drawArrowhead(ctx, pPenultimate, pLast, '#64748b');
+        drawArrowhead(ctx, pPenultimate, pLast, line.isDashed ? '#d97706' : '#64748b');
       }
+      ctx.restore();
     }
 
     // 2. Draw Rectangular Person Boxes (Pure minimal design: name only, no icons/emojis)
@@ -138,6 +144,53 @@ export async function exportTreeImage(
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(node.name || 'Empty Box', x + w / 2, y + h / 2);
+      } else if (node.isExtraNote) {
+        // Extra Note / Person: amber fill, dashed breaking line border -------
+        ctx.save();
+        ctx.setLineDash([5, 4]);
+        ctx.fillStyle = '#fffbeb'; // Amber 50
+        ctx.strokeStyle = '#f59e0b'; // Amber 500
+        ctx.lineWidth = 1.75;
+
+        drawRoundedRect(ctx, x, y, w, h, radius);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+
+        ctx.fillStyle = '#78350f'; // Amber 900
+        ctx.font = `600 12px ${fontFamilyName}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        const dims = computeNodeDimensions(node.name, false, node.extraNote);
+        const nameLines = dims.lines;
+        const lineSpacing = 16;
+        const nameBlockH = nameLines.length * lineSpacing;
+        const startY = node.extraNote ? y + 14 : y + h / 2 - ((nameLines.length - 1) * lineSpacing) / 2;
+
+        for (let li = 0; li < nameLines.length; li++) {
+          ctx.fillText(nameLines[li], x + w / 2, startY + li * lineSpacing);
+        }
+
+        // Draw breaking line ------- divider inside box if extraNote exists
+        if (node.extraNote && dims.noteLines) {
+          const dividerY = startY + nameBlockH - 2;
+          ctx.save();
+          ctx.setLineDash([3, 3]);
+          ctx.strokeStyle = '#d97706';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(x + 10, dividerY);
+          ctx.lineTo(x + w - 10, dividerY);
+          ctx.stroke();
+          ctx.restore();
+
+          ctx.fillStyle = '#92400e';
+          ctx.font = `italic 10px ${fontFamilyName}`;
+          for (let ni = 0; ni < dims.noteLines.length; ni++) {
+            ctx.fillText(dims.noteLines[ni], x + w / 2, dividerY + 12 + ni * 13);
+          }
+        }
       } else {
         // Named Person Box: clean white background, crisp border
         const isRoot = node.id === tree.rootPersonId;
@@ -150,21 +203,41 @@ export async function exportTreeImage(
         ctx.fill();
         ctx.stroke();
 
-        // Person Name: Multi-line wrapped, zero dots "..." truncation!
         ctx.fillStyle = '#0f172a'; // Slate 900
         ctx.font = isRoot
-          ? `bold 13px ${fontFamilyName}`
-          : `500 13px ${fontFamilyName}`;
+          ? `bold 12px ${fontFamilyName}`
+          : `500 12px ${fontFamilyName}`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
-        const dims = computeNodeDimensions(node.name, false);
+        const dims = computeNodeDimensions(node.name, false, node.extraNote);
         const textLines = dims.lines;
-        const lineSpacing = 18;
-        const startY = y + h / 2 - ((textLines.length - 1) * lineSpacing) / 2;
+        const lineSpacing = 16;
+        const nameBlockH = textLines.length * lineSpacing;
+        const startY = node.extraNote ? y + 14 : y + h / 2 - ((textLines.length - 1) * lineSpacing) / 2;
 
         for (let li = 0; li < textLines.length; li++) {
           ctx.fillText(textLines[li], x + w / 2, startY + li * lineSpacing);
+        }
+
+        // Breaking line ------- divider if extraNote exists
+        if (node.extraNote && dims.noteLines) {
+          const dividerY = startY + nameBlockH - 2;
+          ctx.save();
+          ctx.setLineDash([3, 3]);
+          ctx.strokeStyle = '#cbd5e1';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(x + 8, dividerY);
+          ctx.lineTo(x + w - 8, dividerY);
+          ctx.stroke();
+          ctx.restore();
+
+          ctx.fillStyle = '#475569';
+          ctx.font = `italic 10px ${fontFamilyName}`;
+          for (let ni = 0; ni < dims.noteLines.length; ni++) {
+            ctx.fillText(dims.noteLines[ni], x + w / 2, dividerY + 12 + ni * 13);
+          }
         }
       }
     }

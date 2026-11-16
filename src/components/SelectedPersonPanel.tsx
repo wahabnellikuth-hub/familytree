@@ -56,6 +56,7 @@ export const SelectedPersonPanel: React.FC<SelectedPersonPanelProps> = ({
 
   const isRoot = personId === tree.rootPersonId;
   const isPlaceholder = person.isPlaceholder;
+  const isExtraNote = person.isExtraNote;
   const father = person.parentId ? tree.people[person.parentId] : null;
   const totalDescendants = countSubtreeDescendants(tree.people, personId);
   const isCollapsed = (tree.collapsedBranchIds || []).includes(personId);
@@ -79,7 +80,13 @@ export const SelectedPersonPanel: React.FC<SelectedPersonPanelProps> = ({
       <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
         <div>
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-            {isRoot ? 'Starting Ancestor' : isPlaceholder ? 'Reserved Placeholder' : 'Family Member'}
+            {isRoot
+              ? 'Starting Ancestor'
+              : isPlaceholder
+              ? 'Reserved Placeholder'
+              : isExtraNote
+              ? 'Extra Note / Person (-------)'
+              : 'Family Member'}
           </span>
           <h2 className="text-base font-semibold text-slate-900 truncate max-w-[200px]" title={person.name}>
             {person.name || (isPlaceholder ? 'Empty Box' : 'Unnamed')}
@@ -118,6 +125,24 @@ export const SelectedPersonPanel: React.FC<SelectedPersonPanelProps> = ({
             <span className="text-slate-500">Total Descendants</span>
             <span className="font-semibold text-slate-800">{totalDescendants}</span>
           </div>
+
+          {isExtraNote && (
+            <div className="flex justify-between items-center text-amber-800 bg-amber-100/70 p-1.5 rounded border border-dashed border-amber-300">
+              <span className="font-semibold">Style</span>
+              <span className="font-bold font-mono text-[10.5px]">------- Breaking Line -------</span>
+            </div>
+          )}
+
+          {person.extraNote && (
+            <div className="mt-2 pt-2 border-t border-dashed border-slate-300 text-xs text-slate-700">
+              <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide block mb-1">
+                Extra Note (-------):
+              </span>
+              <p className="italic bg-white p-2 rounded border border-slate-200 leading-relaxed">
+                {person.extraNote}
+              </p>
+            </div>
+          )}
 
           {isPlaceholder && (
             <div className="mt-2 pt-2 border-t border-slate-200 text-amber-700 text-[11px]">

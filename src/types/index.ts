@@ -18,6 +18,8 @@ export interface Person {
   generation: number; // 1 for first grandfather, 2 for sons, 3 for grandsons, etc.
   isPlaceholder?: boolean; // True if it's an empty placeholder box
   branchDirection?: BranchDirection; // Per-father arrangement: 'inherit' (follows tree), 'horizontal' (side-by-side), or 'vertical' (stacked column)
+  isExtraNote?: boolean; // True if this box is an extra note / special person (rendered with breaking line -------)
+  extraNote?: string; // Optional extra note text displayed below a breaking line inside the box
 }
 
 export interface FamilyTreeData {
@@ -47,6 +49,8 @@ export interface NodePosition {
   parentId: string | null;
   childrenIds: string[];
   branchDirection?: BranchDirection;
+  isExtraNote?: boolean;
+  extraNote?: string;
 }
 
 export interface TreeConnectionLine {
@@ -55,6 +59,7 @@ export interface TreeConnectionLine {
   toId: string;
   points: { x: number; y: number }[]; // Orthogonal path points
   hasArrow?: boolean;
+  isDashed?: boolean; // Rendered as breaking/dashed line -------
 }
 
 export interface TreeLayoutResult {

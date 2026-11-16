@@ -26,6 +26,7 @@ export const PersonBox: React.FC<PersonBoxProps> = ({
   onOpenActions,
 }) => {
   const isPlaceholder = node.isPlaceholder;
+  const isExtraNote = node.isExtraNote;
 
   return (
     <div
@@ -36,6 +37,8 @@ export const PersonBox: React.FC<PersonBoxProps> = ({
       className={`group absolute select-none rounded-[5px] transition-all duration-150 cursor-pointer flex flex-col justify-center items-center px-1.5 py-0.5 ${
         isPlaceholder
           ? 'bg-slate-50/90 border-2 border-dashed border-slate-300 hover:border-slate-400 text-slate-500'
+          : isExtraNote
+          ? 'bg-amber-50/80 border-2 border-dashed border-amber-400 hover:border-amber-500 text-slate-800 shadow-xs'
           : isRoot
           ? 'bg-white border-2 border-sky-600 shadow-sm text-slate-900 font-semibold'
           : 'bg-white border border-slate-300 hover:border-slate-400 shadow-sm text-slate-800'
@@ -54,6 +57,16 @@ export const PersonBox: React.FC<PersonBoxProps> = ({
         fontFamily: fontFamily || '"Noto Sans Malayalam", "Manjari", "Gayathri", "Kartika", "Rachana", "AnjaliOldLipi", system-ui, -apple-system, sans-serif',
       }}
     >
+      {/* Extra Note / Person breaking line indicator pill */}
+      {isExtraNote && (
+        <span
+          className="absolute -top-2 right-1 px-1 py-0.2 rounded text-[8px] font-bold bg-amber-100 text-amber-800 border border-amber-300 shadow-xs tracking-tight"
+          title="Extra Note / Additional Person (Break line)"
+        >
+          - - Note - -
+        </span>
+      )}
+
       {/* Branch custom orientation pill if set */}
       {node.hasChildren && node.branchDirection && node.branchDirection !== 'inherit' && (
         <span
@@ -93,6 +106,18 @@ export const PersonBox: React.FC<PersonBoxProps> = ({
       >
         {node.name || (isPlaceholder ? 'Empty Box' : 'Unnamed')}
       </div>
+
+      {/* Breaking line like ------- to easily identify extra notes */}
+      {node.extraNote && (
+        <div className="w-full flex flex-col items-center mt-1 pt-0.5 border-t border-dashed border-slate-300">
+          <span
+            className="text-[10px] leading-tight text-slate-600 font-normal italic px-1 line-clamp-2 text-center"
+            title={node.extraNote}
+          >
+            {node.extraNote}
+          </span>
+        </div>
+      )}
 
       {/* Collapse / Expand toggle indicator if node has children */}
       {node.hasChildren && (

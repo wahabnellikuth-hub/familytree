@@ -26,6 +26,8 @@ export function sanitizeTreeData(tree: any): FamilyTreeData {
         : [],
       generation: typeof rawPerson.generation === 'number' && !isNaN(rawPerson.generation) ? rawPerson.generation : 1,
       isPlaceholder: Boolean(rawPerson.isPlaceholder),
+      isExtraNote: Boolean(rawPerson.isExtraNote),
+      extraNote: typeof rawPerson.extraNote === 'string' ? rawPerson.extraNote.trim() : undefined,
       branchDirection: (['inherit', 'horizontal', 'vertical', 'rays', 'staggered', 'spine-right', 'spine-left', 'alternating'].includes(rawPerson.branchDirection))
         ? rawPerson.branchDirection
         : 'inherit',
@@ -224,14 +226,23 @@ function recalculateGenerations(
   }
 }
 
+export type ChildItemInput =
+  | string
+  | {
+      name: string;
+      isPlaceholder?: boolean;
+      isExtraNote?: boolean;
+      extraNote?: string;
+    };
+
 /**
- * Adds one or more children to a father.
+ * Adds one or more children or extra notes/persons to a father.
  */
 export function addChildren(
   tree: FamilyTreeData,
   fatherId: string,
-  names: string[],
-  isPlaceholder: boolean = false
+  items: ChildItemInput[],
+  globalIsPlaceholder: boolean = false
 ): FamilyTreeData {
   const father = tree.people[fatherId];
   if (!father) return tree;
@@ -240,18 +251,26 @@ export function addChildren(
   const newChildrenIds = [...(father.childrenIds || [])];
 
   const now = Date.now();
-  for (let i = 0; i < names.length; i++) {
-    const name = names[i].trim();
-    if (!name && !isPlaceholder) continue;
+  for (let i = 0; i < items.length; i++) {
+    const raw = items[i];
+    const itemObj = typeof raw === 'string' ? { name: raw } : raw;
+    const name = (itemObj.name || '').trim();
+    const isPlaceholder = itemObj.isPlaceholder ?? globalIsPlaceholder;
+    const isExtraNote = Boolean(itemObj.isExtraNote);
+    const extraNote = itemObj.extraNote ? itemObj.extraNote.trim() : undefined;
+
+    if (!name && !isPlaceholder && !extraNote) continue;
 
     const childId = `p_${now}_${Math.random().toString(36).substring(2, 8)}_${i}`;
     newPeople[childId] = {
       id: childId,
-      name: name || (isPlaceholder ? 'Empty Box (Reserved)' : 'Unnamed Son'),
+      name: name || (isPlaceholder ? 'Empty Box (Reserved)' : isExtraNote ? 'Extra Note' : 'Unnamed Son'),
       parentId: fatherId,
       childrenIds: [],
       generation: father.generation + 1,
-      isPlaceholder: isPlaceholder,
+      isPlaceholder,
+      isExtraNote,
+      extraNote,
     };
     newChildrenIds.push(childId);
   }
@@ -308,6 +327,21 @@ export function updatePersonName(
   personId: string,
   newName: string
 ): FamilyTreeData {
+  return updatePersonDetails(tree, personId, { name: newName });
+}
+
+/**
+ * Updates a person's name, extra note, and extra note status.
+ */
+export function updatePersonDetails(
+  tree: FamilyTreeData,
+  personId: string,
+  details: {
+    name: string;
+    isExtraNote?: boolean;
+    extraNote?: string;
+  }
+): FamilyTreeData {
   const person = tree.people[personId];
   if (!person) return tree;
 
@@ -317,7 +351,9 @@ export function updatePersonName(
       ...tree.people,
       [personId]: {
         ...person,
-        name: newName.trim() || person.name,
+        name: details.name.trim() || person.name,
+        isExtraNote: details.isExtraNote !== undefined ? details.isExtraNote : person.isExtraNote,
+        extraNote: details.extraNote !== undefined ? (details.extraNote.trim() || undefined) : person.extraNote,
       },
     },
     updatedAt: Date.now(),

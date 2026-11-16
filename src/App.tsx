@@ -5,7 +5,7 @@ import {
   addChildren,
   addEmptyPlaceholder,
   convertPlaceholder,
-  updatePersonName,
+  updatePersonDetails,
   deletePerson,
   reorderChildren,
   movePerson,
@@ -241,9 +241,12 @@ export const App: React.FC = () => {
   };
 
   // Tree mutations
-  const handleAddChildrenConfirm = (names: string[], isPlaceholder: boolean) => {
+  const handleAddChildrenConfirm = (
+    items: Array<{ name: string; isExtraNote?: boolean; extraNote?: string } | string>,
+    isPlaceholder: boolean
+  ) => {
     if (!activeTree || !addChildTargetId) return;
-    const updated = addChildren(activeTree, addChildTargetId, names, isPlaceholder);
+    const updated = addChildren(activeTree, addChildTargetId, items, isPlaceholder);
     updateTreeState(updated);
   };
 
@@ -253,14 +256,17 @@ export const App: React.FC = () => {
     updateTreeState(updated);
   };
 
-  const handleEditNameConfirm = (newName: string) => {
+  const handleEditNameConfirm = (newName: string, isExtraNote?: boolean, extraNote?: string) => {
     if (!activeTree || !editPersonTargetId) return;
     const person = activeTree.people[editPersonTargetId];
     if (person?.isPlaceholder) {
-      const updated = convertPlaceholder(activeTree, editPersonTargetId, newName);
+      let updated = convertPlaceholder(activeTree, editPersonTargetId, newName);
+      if (isExtraNote !== undefined || extraNote !== undefined) {
+        updated = updatePersonDetails(updated, editPersonTargetId, { name: newName, isExtraNote, extraNote });
+      }
       updateTreeState(updated);
     } else {
-      const updated = updatePersonName(activeTree, editPersonTargetId, newName);
+      const updated = updatePersonDetails(activeTree, editPersonTargetId, { name: newName, isExtraNote, extraNote });
       updateTreeState(updated);
     }
   };
@@ -431,6 +437,8 @@ export const App: React.FC = () => {
           isOpen={true}
           initialName={activeTree.people[editPersonTargetId].name}
           isPlaceholder={activeTree.people[editPersonTargetId].isPlaceholder}
+          initialIsExtraNote={activeTree.people[editPersonTargetId].isExtraNote}
+          initialExtraNote={activeTree.people[editPersonTargetId].extraNote}
           onClose={() => setEditPersonTargetId(null)}
           onConfirm={handleEditNameConfirm}
         />

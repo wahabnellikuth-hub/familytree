@@ -14,21 +14,20 @@ export const HORIZONTAL_GEN_GAP = 32;
  */
 export function computeNodeDimensions(
   name: string,
-  isPlaceholder?: boolean
-): { width: number; height: number; lines: string[] } {
+  isPlaceholder?: boolean,
+  extraNote?: string
+): { width: number; height: number; lines: string[]; noteLines?: string[] } {
   const text = (name || (isPlaceholder ? 'Empty Box (Reserved)' : 'Unnamed')).trim();
   const words = text.split(/\s+/);
 
-  // Short single or 2-word names: base dimensions
-  if (text.length <= 15) {
-    return { width: BASE_BOX_WIDTH, height: BASE_BOX_HEIGHT, lines: [text] };
-  }
+  let nameW = BASE_BOX_WIDTH;
+  let nameH = BASE_BOX_HEIGHT;
+  let lines: string[] = [text];
 
-  // Medium to long text: wrap words into balanced lines
-  if (words.length > 1) {
-    const lines: string[] = [];
+  // Short single or 2-word names: base dimensions
+  if (text.length > 15 && words.length > 1) {
+    const wrapped: string[] = [];
     let currentLine = '';
-    // Determine target characters per line for balanced rectangular proportion
     const targetLineChars = text.length > 30 ? Math.ceil(text.length / 3) : Math.ceil(text.length / 2);
     const maxLineChars = Math.max(14, targetLineChars);
 
@@ -38,23 +37,47 @@ export function computeNodeDimensions(
       } else if ((currentLine + ' ' + word).length <= maxLineChars) {
         currentLine += ' ' + word;
       } else {
-        lines.push(currentLine);
+        wrapped.push(currentLine);
         currentLine = word;
       }
     }
-    if (currentLine) lines.push(currentLine);
-
-    // Compute width and height based on the longest wrapped line
+    if (currentLine) wrapped.push(currentLine);
+    lines = wrapped;
     const longestLineLen = Math.max(...lines.map((l) => l.length));
-    const dynamicW = Math.min(260, Math.max(BASE_BOX_WIDTH, Math.round(longestLineLen * 8.5 + 20)));
-    const dynamicH = Math.max(BASE_BOX_HEIGHT, lines.length * 16 + 8);
-
-    return { width: dynamicW, height: dynamicH, lines };
+    nameW = Math.min(260, Math.max(BASE_BOX_WIDTH, Math.round(longestLineLen * 8.5 + 20)));
+    nameH = Math.max(BASE_BOX_HEIGHT, lines.length * 16 + 8);
+  } else if (text.length > 15) {
+    nameW = Math.min(280, Math.max(BASE_BOX_WIDTH, Math.round(text.length * 8.5 + 20)));
   }
 
-  // Single long word without spaces: expand width proportionally
-  const dynamicW = Math.min(280, Math.max(BASE_BOX_WIDTH, Math.round(text.length * 8.5 + 20)));
-  return { width: dynamicW, height: BASE_BOX_HEIGHT, lines: [text] };
+  // Handle extra note breaking line and text
+  let noteLines: string[] | undefined = undefined;
+  if (extraNote && extraNote.trim()) {
+    const noteText = extraNote.trim();
+    const noteWords = noteText.split(/\s+/);
+    noteLines = [];
+    let currentNoteLine = '';
+    const maxNoteChars = 20;
+
+    for (const word of noteWords) {
+      if (!currentNoteLine) {
+        currentNoteLine = word;
+      } else if ((currentNoteLine + ' ' + word).length <= maxNoteChars) {
+        currentNoteLine += ' ' + word;
+      } else {
+        noteLines.push(currentNoteLine);
+        currentNoteLine = word;
+      }
+    }
+    if (currentNoteLine) noteLines.push(currentNoteLine);
+
+    const longestNoteLen = Math.max(...noteLines.map((l) => l.length));
+    const noteW = Math.min(260, Math.max(nameW, Math.round(longestNoteLen * 7.5 + 20)));
+    nameW = Math.max(nameW, noteW);
+    nameH += noteLines.length * 14 + 10; // Breaking line + note height
+  }
+
+  return { width: nameW, height: nameH, lines, noteLines };
 }
 
 interface SubtreeLayout {
@@ -104,7 +127,7 @@ function layoutSubtreeFlexible(
   const totalDescendants = countSubtreeDescendants(tree.people, nodeId);
 
   // Compute dynamic box dimensions
-  const dims = computeNodeDimensions(person?.name || '', person?.isPlaceholder);
+  const dims = computeNodeDimensions(person?.name || '', person?.isPlaceholder, person?.extraNote);
   const halfW = dims.width / 2;
 
   const rawChildren = !isCollapsed && person && Array.isArray(person.childrenIds) ? person.childrenIds : [];
@@ -434,7 +457,7 @@ function layoutSubtreeHorizontal(
   const isCollapsed = collapsedSet.has(nodeId);
   const totalDescendants = countSubtreeDescendants(tree.people, nodeId);
 
-  const dims = computeNodeDimensions(person?.name || '', person?.isPlaceholder);
+  const dims = computeNodeDimensions(person?.name || '', person?.isPlaceholder, person?.extraNote);
   const halfH = dims.height / 2;
 
   const rawChildren = !isCollapsed && person && Array.isArray(person.childrenIds) ? person.childrenIds : [];
@@ -684,6 +707,8 @@ export function calculateTreeLayout(
       parentId: person.parentId,
       childrenIds: person.childrenIds || [],
       branchDirection: person.branchDirection,
+      isExtraNote: !!person.isExtraNote,
+      extraNote: person.extraNote,
     });
   }
 
@@ -713,6 +738,7 @@ export function calculateTreeLayout(
       for (const child of visibleChildren) {
         const childLeftX = child.pos.x;
         const childLeftY = child.pos.y + child.pos.height / 2;
+        const isDashed = Boolean(safeTree.people[child.id]?.isExtraNote);
 
         if (visibleChildren.length === 1 && Math.abs(parentRightY - childLeftY) <= 3) {
           // Direct straight horizontal line for aligned single child
@@ -720,6 +746,7 @@ export function calculateTreeLayout(
             id: `line_${node.id}_${child.id}`,
             fromId: node.id,
             toId: child.id,
+            isDashed,
             points: [
               { x: parentRightX, y: parentRightY },
               { x: childLeftX, y: parentRightY },
@@ -731,6 +758,7 @@ export function calculateTreeLayout(
             id: `line_${node.id}_${child.id}`,
             fromId: node.id,
             toId: child.id,
+            isDashed,
             points: [
               { x: parentRightX, y: parentRightY },
               { x: childLeftX, y: childLeftY },
@@ -741,6 +769,7 @@ export function calculateTreeLayout(
             id: `line_${node.id}_${child.id}`,
             fromId: node.id,
             toId: child.id,
+            isDashed,
             points: [
               { x: parentRightX, y: parentRightY },
               { x: midX, y: parentRightY },
@@ -762,6 +791,7 @@ export function calculateTreeLayout(
       const firstChildTopX = firstChild.pos.x + firstChild.pos.width / 2;
       const firstChildTopY = firstChild.pos.y;
       const midY = Math.round((parentBottomY + firstChildTopY) / 2);
+      const firstChildIsDashed = Boolean(safeTree.people[firstChild.id]?.isExtraNote);
 
       // Line to First Son: DIRECT 90-DEGREE STRAIGHT VERTICAL LINE!
       if (Math.abs(parentBottomX - firstChildTopX) <= 4) {
@@ -770,6 +800,7 @@ export function calculateTreeLayout(
           id: `line_${node.id}_${firstChild.id}`,
           fromId: node.id,
           toId: firstChild.id,
+          isDashed: firstChildIsDashed,
           points: [
             { x: parentBottomX, y: parentBottomY },
             { x: parentBottomX, y: firstChildTopY },
@@ -781,6 +812,7 @@ export function calculateTreeLayout(
           id: `line_${node.id}_${firstChild.id}`,
           fromId: node.id,
           toId: firstChild.id,
+          isDashed: firstChildIsDashed,
           points: [
             { x: parentBottomX, y: parentBottomY },
             { x: parentBottomX, y: midY },
@@ -799,11 +831,13 @@ export function calculateTreeLayout(
           const child = visibleChildren[i];
           const childMidY = child.pos.y + child.pos.height / 2;
           const childLeftX = child.pos.x;
+          const isDashed = Boolean(safeTree.people[child.id]?.isExtraNote);
 
           lines.push({
             id: `line_${node.id}_${child.id}`,
             fromId: node.id,
             toId: child.id,
+            isDashed,
             points: [
               { x: parentBottomX, y: midY },
               { x: sideRailX, y: midY },
@@ -824,6 +858,7 @@ export function calculateTreeLayout(
       for (const child of visibleChildren) {
         const childLeftX = child.pos.x;
         const childLeftY = child.pos.y + child.pos.height / 2;
+        const isDashed = Boolean(safeTree.people[child.id]?.isExtraNote);
 
         if (Math.abs(parentRightY - childLeftY) <= 4) {
           // Straight horizontal ray (➡)
@@ -832,6 +867,7 @@ export function calculateTreeLayout(
             fromId: node.id,
             toId: child.id,
             hasArrow: true,
+            isDashed,
             points: [
               { x: parentRightX, y: parentRightY },
               { x: childLeftX, y: childLeftY },
@@ -845,6 +881,7 @@ export function calculateTreeLayout(
             fromId: node.id,
             toId: child.id,
             hasArrow: true,
+            isDashed,
             points: [
               { x: parentRightX, y: parentRightY },
               { x: midX, y: parentRightY },
@@ -865,12 +902,14 @@ export function calculateTreeLayout(
       for (const child of visibleChildren) {
         const childMidY = child.pos.y + child.pos.height / 2;
         const childLeftX = child.pos.x;
+        const isDashed = Boolean(safeTree.people[child.id]?.isExtraNote);
 
         lines.push({
           id: `line_${node.id}_${child.id}`,
           fromId: node.id,
           toId: child.id,
           hasArrow: true,
+          isDashed,
           points: [
             { x: trunkX, y: parentBottomY },
             { x: trunkX, y: childMidY },
@@ -889,12 +928,14 @@ export function calculateTreeLayout(
       for (const child of visibleChildren) {
         const childMidY = child.pos.y + child.pos.height / 2;
         const childRightX = child.pos.x + child.pos.width;
+        const isDashed = Boolean(safeTree.people[child.id]?.isExtraNote);
 
         lines.push({
           id: `line_${node.id}_${child.id}`,
           fromId: node.id,
           toId: child.id,
           hasArrow: true,
+          isDashed,
           points: [
             { x: trunkX, y: parentBottomY },
             { x: trunkX, y: childMidY },
@@ -913,12 +954,14 @@ export function calculateTreeLayout(
         const childMidY = child.pos.y + child.pos.height / 2;
         const isRight = (child.pos.x + child.pos.width / 2) >= trunkX;
         const targetEntryX = isRight ? child.pos.x : (child.pos.x + child.pos.width);
+        const isDashed = Boolean(safeTree.people[child.id]?.isExtraNote);
 
         lines.push({
           id: `line_${node.id}_${child.id}`,
           fromId: node.id,
           toId: child.id,
           hasArrow: true,
+          isDashed,
           points: [
             { x: trunkX, y: parentBottomY },
             { x: trunkX, y: childMidY },
@@ -939,6 +982,7 @@ export function calculateTreeLayout(
       for (const child of visibleChildren) {
         const childTopX = child.pos.x + child.pos.width / 2;
         const childTopY = child.pos.y;
+        const isDashed = Boolean(safeTree.people[child.id]?.isExtraNote);
 
         if (visibleChildren.length === 1 && Math.abs(parentBottomX - childTopX) <= 3) {
           // Single child aligned directly below father: direct 90° straight line
@@ -946,6 +990,7 @@ export function calculateTreeLayout(
             id: `line_${node.id}_${child.id}`,
             fromId: node.id,
             toId: child.id,
+            isDashed,
             points: [
               { x: parentBottomX, y: parentBottomY },
               { x: parentBottomX, y: childTopY },
@@ -957,6 +1002,7 @@ export function calculateTreeLayout(
             id: `line_${node.id}_${child.id}`,
             fromId: node.id,
             toId: child.id,
+            isDashed,
             points: [
               { x: parentBottomX, y: parentBottomY },
               { x: childTopX, y: childTopY },
@@ -967,6 +1013,7 @@ export function calculateTreeLayout(
             id: `line_${node.id}_${child.id}`,
             fromId: node.id,
             toId: child.id,
+            isDashed,
             points: [
               { x: parentBottomX, y: parentBottomY },
               { x: parentBottomX, y: midY },
