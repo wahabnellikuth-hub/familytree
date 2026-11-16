@@ -1,6 +1,14 @@
 export type LayoutMode = 'vertical' | 'horizontal' | 'hybrid';
 
-export type BranchDirection = 'inherit' | 'horizontal' | 'vertical' | 'rays' | 'staggered';
+export type BranchDirection =
+  | 'inherit'
+  | 'horizontal'
+  | 'vertical'
+  | 'rays'
+  | 'staggered'
+  | 'spine-right'
+  | 'spine-left'
+  | 'alternating';
 
 export interface Person {
   id: string;
@@ -46,6 +54,7 @@ export interface TreeConnectionLine {
   fromId: string;
   toId: string;
   points: { x: number; y: number }[]; // Orthogonal path points
+  hasArrow?: boolean;
 }
 
 export interface TreeLayoutResult {

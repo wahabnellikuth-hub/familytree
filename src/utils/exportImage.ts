@@ -103,6 +103,12 @@ export async function exportTreeImage(
         ctx.lineTo(line.points[i].x, line.points[i].y);
       }
       ctx.stroke();
+
+      if (line.hasArrow) {
+        const pPenultimate = line.points[line.points.length - 2];
+        const pLast = line.points[line.points.length - 1];
+        drawArrowhead(ctx, pPenultimate, pLast, '#64748b');
+      }
     }
 
     // 2. Draw Rectangular Person Boxes (Pure minimal design: name only, no icons/emojis)
@@ -204,4 +210,30 @@ function drawRoundedRect(
   ctx.lineTo(x, y + r);
   ctx.quadraticCurveTo(x, y, x + r, y);
   ctx.closePath();
+}
+
+function drawArrowhead(
+  ctx: CanvasRenderingContext2D,
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  color: string = '#64748b'
+): void {
+  const angle = Math.atan2(to.y - from.y, to.x - from.x);
+  const arrowLength = 7;
+
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(to.x, to.y);
+  ctx.lineTo(
+    to.x - arrowLength * Math.cos(angle - Math.PI / 6),
+    to.y - arrowLength * Math.sin(angle - Math.PI / 6)
+  );
+  ctx.lineTo(
+    to.x - arrowLength * Math.cos(angle + Math.PI / 6),
+    to.y - arrowLength * Math.sin(angle + Math.PI / 6)
+  );
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
 }

@@ -256,6 +256,31 @@ export const TreeView: React.FC<TreeViewProps> = ({
           width={layoutResult.bounds.width}
           height={layoutResult.bounds.height}
         >
+          <defs>
+            <marker
+              id="tree-arrow"
+              viewBox="0 0 10 10"
+              refX="7"
+              refY="5"
+              markerWidth="6"
+              markerHeight="6"
+              orient="auto"
+            >
+              <path d="M 1 2 L 7 5 L 1 8 z" fill="#94a3b8" />
+            </marker>
+            <marker
+              id="tree-arrow-active"
+              viewBox="0 0 10 10"
+              refX="7"
+              refY="5"
+              markerWidth="6"
+              markerHeight="6"
+              orient="auto"
+            >
+              <path d="M 1 2 L 7 5 L 1 8 z" fill="#0284c7" />
+            </marker>
+          </defs>
+
           {layoutResult.lines.map((line) => {
             const isLineHighlighted =
               highlightedIds.has(line.fromId) && highlightedIds.has(line.toId);
@@ -275,6 +300,7 @@ export const TreeView: React.FC<TreeViewProps> = ({
                 strokeWidth={isLineHighlighted ? 2.5 : 1.75}
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                markerEnd={line.hasArrow ? (isLineHighlighted ? 'url(#tree-arrow-active)' : 'url(#tree-arrow)') : undefined}
                 className="transition-colors duration-150"
               />
             );

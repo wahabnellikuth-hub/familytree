@@ -77,11 +77,13 @@ interface SubtreeLayout {
 function resolveChildrenDirection(
   nodeBranchDir: BranchDirection | undefined,
   globalMode: LayoutMode
-): 'horizontal' | 'vertical' | 'rays' | 'staggered' {
+): 'horizontal' | 'vertical' | 'rays' | 'spine-right' | 'spine-left' | 'alternating' {
   if (nodeBranchDir === 'vertical') return 'vertical';
   if (nodeBranchDir === 'horizontal') return 'horizontal';
   if (nodeBranchDir === 'rays') return 'rays';
-  if (nodeBranchDir === 'staggered') return 'staggered';
+  if (nodeBranchDir === 'staggered' || nodeBranchDir === 'spine-right') return 'spine-right';
+  if (nodeBranchDir === 'spine-left') return 'spine-left';
+  if (nodeBranchDir === 'alternating') return 'alternating';
   // Inherit from global mode: in vertical/hybrid mode, default sibling expansion is horizontal; in horizontal mode, vertical.
   return globalMode === 'horizontal' ? 'vertical' : 'horizontal';
 }
@@ -169,17 +171,18 @@ function layoutSubtreeFlexible(
       branchDirection: person?.branchDirection || 'inherit',
       isVerticallyStackedChildren: false,
     };
-  } else if (childrenDir === 'staggered') {
+  } else if (childrenDir === 'spine-right') {
     // -------------------------------------------------------------
-    // SINGLE-LINE STAGGERED (Trunk drop with 25%, 50%, 75%, 100% taps)
+    // RIGHT SPINE / COMB RIGHT (matches user sketch)
+    // Vertical line drops straight down from father, all sons to the right
     // -------------------------------------------------------------
     let currentYOffset = VERTICAL_GEN_GAP + dims.height;
     let maxChildSubtreeRight = halfW;
 
     for (let i = 0; i < laidOutChildren.length; i++) {
       const child = laidOutChildren[i];
-      // Indent children slightly to the right of trunk drop line (x = 0)
-      shiftSubtreeX(child, 30 + child.width / 2);
+      // Indent children to the right of trunk drop line (x = 0)
+      shiftSubtreeX(child, 26 + child.width / 2);
       shiftSubtreeY(child, currentYOffset);
 
       const childSubtreeHeight = getSubtreeBoundingBox(child).height;
@@ -190,6 +193,82 @@ function layoutSubtreeFlexible(
     }
 
     const leftContour: number[] = [-halfW, 0];
+    const rightContour: number[] = [halfW, maxChildSubtreeRight];
+
+    return {
+      id: nodeId,
+      x: 0,
+      y: depth * (BASE_BOX_HEIGHT + VERTICAL_GEN_GAP),
+      width: dims.width,
+      height: dims.height,
+      leftContour,
+      rightContour,
+      children: laidOutChildren,
+      totalDescendants,
+      branchDirection: person?.branchDirection || 'inherit',
+      isVerticallyStackedChildren: true,
+    };
+  } else if (childrenDir === 'spine-left') {
+    // -------------------------------------------------------------
+    // LEFT SPINE / COMB LEFT
+    // Vertical line drops straight down from father, all sons to the left
+    // -------------------------------------------------------------
+    let currentYOffset = VERTICAL_GEN_GAP + dims.height;
+    let minChildSubtreeLeft = -halfW;
+
+    for (let i = 0; i < laidOutChildren.length; i++) {
+      const child = laidOutChildren[i];
+      // Indent children to the left of trunk drop line (x = 0)
+      shiftSubtreeX(child, -26 - child.width / 2);
+      shiftSubtreeY(child, currentYOffset);
+
+      const childSubtreeHeight = getSubtreeBoundingBox(child).height;
+      currentYOffset += childSubtreeHeight + VERTICAL_SIBLING_GAP;
+
+      const bbox = getSubtreeBoundingBox(child);
+      minChildSubtreeLeft = Math.min(minChildSubtreeLeft, bbox.minX);
+    }
+
+    const leftContour: number[] = [-halfW, minChildSubtreeLeft];
+    const rightContour: number[] = [halfW, 0];
+
+    return {
+      id: nodeId,
+      x: 0,
+      y: depth * (BASE_BOX_HEIGHT + VERTICAL_GEN_GAP),
+      width: dims.width,
+      height: dims.height,
+      leftContour,
+      rightContour,
+      children: laidOutChildren,
+      totalDescendants,
+      branchDirection: person?.branchDirection || 'inherit',
+      isVerticallyStackedChildren: true,
+    };
+  } else if (childrenDir === 'alternating') {
+    // -------------------------------------------------------------
+    // ALTERNATING FISHBONE SPINE (Left & Right alternating)
+    // -------------------------------------------------------------
+    let currentYOffset = VERTICAL_GEN_GAP + dims.height;
+    let minChildSubtreeLeft = -halfW;
+    let maxChildSubtreeRight = halfW;
+
+    for (let i = 0; i < laidOutChildren.length; i++) {
+      const child = laidOutChildren[i];
+      const isRight = i % 2 === 0;
+      const targetX = isRight ? (26 + child.width / 2) : (-26 - child.width / 2);
+      shiftSubtreeX(child, targetX);
+      shiftSubtreeY(child, currentYOffset);
+
+      const childSubtreeHeight = getSubtreeBoundingBox(child).height;
+      currentYOffset += childSubtreeHeight + VERTICAL_SIBLING_GAP;
+
+      const bbox = getSubtreeBoundingBox(child);
+      minChildSubtreeLeft = Math.min(minChildSubtreeLeft, bbox.minX);
+      maxChildSubtreeRight = Math.max(maxChildSubtreeRight, bbox.maxX);
+    }
+
+    const leftContour: number[] = [-halfW, minChildSubtreeLeft];
     const rightContour: number[] = [halfW, maxChildSubtreeRight];
 
     return {
@@ -724,6 +803,7 @@ export function calculateTreeLayout(
             id: `line_${node.id}_${child.id}`,
             fromId: node.id,
             toId: child.id,
+            hasArrow: true,
             points: [
               { x: parentRightX, y: parentRightY },
               { x: childLeftX, y: childLeftY },
@@ -736,6 +816,7 @@ export function calculateTreeLayout(
             id: `line_${node.id}_${child.id}`,
             fromId: node.id,
             toId: child.id,
+            hasArrow: true,
             points: [
               { x: parentRightX, y: parentRightY },
               { x: midX, y: parentRightY },
@@ -745,9 +826,10 @@ export function calculateTreeLayout(
           });
         }
       }
-    } else if (childrenDir === 'staggered') {
+    } else if (childrenDir === 'spine-right') {
       // -----------------------------------------------------------
-      // SINGLE-LINE STAGGERED (Trunk line with 25%, 50%, 75%, 100% taps)
+      // RIGHT SPINE / COMB RIGHT (matches user sketch)
+      // Vertical line drops from father, with horizontal arms to sons on right
       // -----------------------------------------------------------
       const trunkX = node.x + node.width / 2;
       const parentBottomY = node.y + node.height;
@@ -760,10 +842,59 @@ export function calculateTreeLayout(
           id: `line_${node.id}_${child.id}`,
           fromId: node.id,
           toId: child.id,
+          hasArrow: true,
           points: [
             { x: trunkX, y: parentBottomY },
             { x: trunkX, y: childMidY },
             { x: childLeftX, y: childMidY },
+          ],
+        });
+      }
+    } else if (childrenDir === 'spine-left') {
+      // -----------------------------------------------------------
+      // LEFT SPINE / COMB LEFT
+      // Vertical line drops from father, with horizontal arms to sons on left
+      // -----------------------------------------------------------
+      const trunkX = node.x + node.width / 2;
+      const parentBottomY = node.y + node.height;
+
+      for (const child of visibleChildren) {
+        const childMidY = child.pos.y + child.pos.height / 2;
+        const childRightX = child.pos.x + child.pos.width;
+
+        lines.push({
+          id: `line_${node.id}_${child.id}`,
+          fromId: node.id,
+          toId: child.id,
+          hasArrow: true,
+          points: [
+            { x: trunkX, y: parentBottomY },
+            { x: trunkX, y: childMidY },
+            { x: childRightX, y: childMidY },
+          ],
+        });
+      }
+    } else if (childrenDir === 'alternating') {
+      // -----------------------------------------------------------
+      // ALTERNATING FISHBONE SPINE (Left & Right alternating arms)
+      // -----------------------------------------------------------
+      const trunkX = node.x + node.width / 2;
+      const parentBottomY = node.y + node.height;
+
+      for (const child of visibleChildren) {
+        const childMidY = child.pos.y + child.pos.height / 2;
+        const isRight = (child.pos.x + child.pos.width / 2) >= trunkX;
+        const targetEntryX = isRight ? child.pos.x : (child.pos.x + child.pos.width);
+
+        lines.push({
+          id: `line_${node.id}_${child.id}`,
+          fromId: node.id,
+          toId: child.id,
+          hasArrow: true,
+          points: [
+            { x: trunkX, y: parentBottomY },
+            { x: trunkX, y: childMidY },
+            { x: targetEntryX, y: childMidY },
           ],
         });
       }

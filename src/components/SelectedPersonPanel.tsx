@@ -15,6 +15,9 @@ import {
   Rows,
   Sparkles,
   Sun,
+  ArrowRight,
+  ArrowLeft,
+  Split,
 } from 'lucide-react';
 
 interface SelectedPersonPanelProps {
@@ -135,99 +138,137 @@ export const SelectedPersonPanel: React.FC<SelectedPersonPanelProps> = ({
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-1.5 pt-0.5">
-              {/* Option 1: Default */}
+            <div className="space-y-1.5 pt-0.5">
+              {/* Featured: Right Spine / Comb Right (Matches sketch) */}
               <button
                 type="button"
-                onClick={() => onChangeBranchDirection(personId, 'inherit')}
-                className={`px-2 py-2 rounded-lg text-[11px] font-medium border flex items-center space-x-2 transition-all ${
-                  !person.branchDirection || person.branchDirection === 'inherit'
-                    ? 'bg-sky-600 text-white border-sky-600 shadow-sm'
-                    : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-200'
-                }`}
-                title="Follows tree default layout"
-              >
-                <Sparkles className="w-4 h-4 flex-shrink-0" />
-                <div className="text-left leading-tight">
-                  <div className="font-semibold">Default</div>
-                  <div className="text-[9.5px] opacity-80">Tree balance</div>
-                </div>
-              </button>
-
-              {/* Option 2: Horizontal Row */}
-              <button
-                type="button"
-                onClick={() => onChangeBranchDirection(personId, 'horizontal')}
-                className={`px-2 py-2 rounded-lg text-[11px] font-medium border flex items-center space-x-2 transition-all ${
-                  person.branchDirection === 'horizontal'
-                    ? 'bg-sky-600 text-white border-sky-600 shadow-sm'
-                    : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-200'
-                }`}
-                title="Arrange sons side-by-side in a horizontal row"
-              >
-                <Columns className="w-4 h-4 flex-shrink-0" />
-                <div className="text-left leading-tight">
-                  <div className="font-semibold">Horizontal (↔)</div>
-                  <div className="text-[9.5px] opacity-80">Side-by-side row</div>
-                </div>
-              </button>
-
-              {/* Option 3: Direct Vertical (90° Straight to First Son) */}
-              <button
-                type="button"
-                onClick={() => onChangeBranchDirection(personId, 'vertical')}
-                className={`px-2 py-2 rounded-lg text-[11px] font-medium border flex items-center space-x-2 transition-all ${
-                  person.branchDirection === 'vertical'
-                    ? 'bg-sky-600 text-white border-sky-600 shadow-sm'
-                    : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-200'
-                }`}
-                title="Direct 90° straight vertical line down to first son, stacked in a column"
-              >
-                <Rows className="w-4 h-4 rotate-90 flex-shrink-0" />
-                <div className="text-left leading-tight">
-                  <div className="font-semibold">Vertical (↕)</div>
-                  <div className="text-[9.5px] opacity-80">90° Direct Column</div>
-                </div>
-              </button>
-
-              {/* Option 4: Sun Rays (Right-Side Fan: Upper, Straight, Below) */}
-              <button
-                type="button"
-                onClick={() => onChangeBranchDirection(personId, 'rays')}
-                className={`px-2 py-2 rounded-lg text-[11px] font-medium border flex items-center space-x-2 transition-all ${
-                  person.branchDirection === 'rays'
-                    ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
-                    : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-200'
-                }`}
-                title="Arranges sons to the right side of father's box as rays of sun (upper, straight, below) - ideal between trees"
-              >
-                <Sun className="w-4 h-4 flex-shrink-0 text-amber-500" />
-                <div className="text-left leading-tight">
-                  <div className="font-semibold">Sun Rays (☀️)</div>
-                  <div className="text-[9.5px] opacity-80">Right-side fan</div>
-                </div>
-              </button>
-
-              {/* Option 5: Single Line Staggered (25%, 50%, 75%, 100%) */}
-              <button
-                type="button"
-                onClick={() => onChangeBranchDirection(personId, 'staggered')}
-                className={`col-span-2 px-2.5 py-2 rounded-lg text-[11px] font-medium border flex items-center space-x-2.5 transition-all ${
-                  person.branchDirection === 'staggered'
+                onClick={() => onChangeBranchDirection(personId, 'spine-right')}
+                className={`w-full px-2.5 py-2 rounded-lg text-[11px] font-medium border flex items-center space-x-2.5 transition-all text-left ${
+                  person.branchDirection === 'spine-right' || person.branchDirection === 'staggered'
                     ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
                     : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-200'
                 }`}
-                title="Drops a single line down with sons branching off at 25%, 50%, 75%, 100% heights"
+                title="Single vertical trunk drops down from father with horizontal branches shooting rightward into sons (as in diagram)"
               >
-                <GitBranch className="w-4 h-4 flex-shrink-0 rotate-180" />
-                <div className="text-left leading-tight flex-1">
+                <ArrowRight className="w-4 h-4 flex-shrink-0" />
+                <div className="flex-1 leading-tight">
                   <div className="font-semibold flex items-center justify-between">
-                    <span>Single Line Staggered (⑂)</span>
-                    <span className="text-[10px] font-normal opacity-90 bg-slate-200/60 px-1 rounded">25% • 50% • 75% • 100%</span>
+                    <span>Right Spine (⑂ വലത്തോട്ട്)</span>
+                    <span className="text-[9.5px] font-normal opacity-90 px-1 py-0.5 rounded bg-black/10">Sketch style</span>
                   </div>
-                  <div className="text-[9.5px] opacity-80">Single line down with proportional branch arms</div>
+                  <div className="text-[9.5px] opacity-80 mt-0.5">Vertical line down with sons to right side</div>
                 </div>
               </button>
+
+              {/* Left Spine / Comb Left */}
+              <button
+                type="button"
+                onClick={() => onChangeBranchDirection(personId, 'spine-left')}
+                className={`w-full px-2.5 py-2 rounded-lg text-[11px] font-medium border flex items-center space-x-2.5 transition-all text-left ${
+                  person.branchDirection === 'spine-left'
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                    : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-200'
+                }`}
+                title="Single vertical trunk drops down from father with horizontal branches shooting leftward into sons"
+              >
+                <ArrowLeft className="w-4 h-4 flex-shrink-0" />
+                <div className="flex-1 leading-tight">
+                  <div className="font-semibold">Left Spine (⑃ ഇടത്തോട്ട്)</div>
+                  <div className="text-[9.5px] opacity-80 mt-0.5">Vertical line down with sons to left side</div>
+                </div>
+              </button>
+
+              {/* Alternating Fishbone Spine */}
+              <button
+                type="button"
+                onClick={() => onChangeBranchDirection(personId, 'alternating')}
+                className={`w-full px-2.5 py-2 rounded-lg text-[11px] font-medium border flex items-center space-x-2.5 transition-all text-left ${
+                  person.branchDirection === 'alternating'
+                    ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                    : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-200'
+                }`}
+                title="Single central drop line with sons alternating left and right"
+              >
+                <Split className="w-4 h-4 flex-shrink-0" />
+                <div className="flex-1 leading-tight">
+                  <div className="font-semibold">Alternating Spine (⑂⑃ മാറി മാറി)</div>
+                  <div className="text-[9.5px] opacity-80 mt-0.5">Central drop line with sons left & right</div>
+                </div>
+              </button>
+
+              <div className="grid grid-cols-2 gap-1.5 pt-1">
+                {/* Sun Rays */}
+                <button
+                  type="button"
+                  onClick={() => onChangeBranchDirection(personId, 'rays')}
+                  className={`px-2 py-2 rounded-lg text-[11px] font-medium border flex items-center space-x-2 transition-all ${
+                    person.branchDirection === 'rays'
+                      ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
+                      : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-200'
+                  }`}
+                  title="Arranges sons to the right side of father's box as rays of sun (upper, straight, below)"
+                >
+                  <Sun className="w-4 h-4 flex-shrink-0 text-amber-500" />
+                  <div className="text-left leading-tight">
+                    <div className="font-semibold">Sun Rays (☀️)</div>
+                    <div className="text-[9.5px] opacity-80">Right fan</div>
+                  </div>
+                </button>
+
+                {/* Direct Vertical */}
+                <button
+                  type="button"
+                  onClick={() => onChangeBranchDirection(personId, 'vertical')}
+                  className={`px-2 py-2 rounded-lg text-[11px] font-medium border flex items-center space-x-2 transition-all ${
+                    person.branchDirection === 'vertical'
+                      ? 'bg-sky-600 text-white border-sky-600 shadow-sm'
+                      : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-200'
+                  }`}
+                  title="Direct 90° straight vertical line down to first son, stacked in a column"
+                >
+                  <Rows className="w-4 h-4 rotate-90 flex-shrink-0" />
+                  <div className="text-left leading-tight">
+                    <div className="font-semibold">Vertical (↕)</div>
+                    <div className="text-[9.5px] opacity-80">90° Column</div>
+                  </div>
+                </button>
+
+                {/* Horizontal Row */}
+                <button
+                  type="button"
+                  onClick={() => onChangeBranchDirection(personId, 'horizontal')}
+                  className={`px-2 py-2 rounded-lg text-[11px] font-medium border flex items-center space-x-2 transition-all ${
+                    person.branchDirection === 'horizontal'
+                      ? 'bg-sky-600 text-white border-sky-600 shadow-sm'
+                      : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-200'
+                  }`}
+                  title="Arrange sons side-by-side in a horizontal row"
+                >
+                  <Columns className="w-4 h-4 flex-shrink-0" />
+                  <div className="text-left leading-tight">
+                    <div className="font-semibold">Horizontal (↔)</div>
+                    <div className="text-[9.5px] opacity-80">Side-by-side</div>
+                  </div>
+                </button>
+
+                {/* Tree Default */}
+                <button
+                  type="button"
+                  onClick={() => onChangeBranchDirection(personId, 'inherit')}
+                  className={`px-2 py-2 rounded-lg text-[11px] font-medium border flex items-center space-x-2 transition-all ${
+                    !person.branchDirection || person.branchDirection === 'inherit'
+                      ? 'bg-sky-600 text-white border-sky-600 shadow-sm'
+                      : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-200'
+                  }`}
+                  title="Follows tree default layout"
+                >
+                  <Sparkles className="w-4 h-4 flex-shrink-0" />
+                  <div className="text-left leading-tight">
+                    <div className="font-semibold">Default</div>
+                    <div className="text-[9.5px] opacity-80">Balanced</div>
+                  </div>
+                </button>
+              </div>
             </div>
           </div>
         )}

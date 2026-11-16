@@ -26,7 +26,7 @@ export function sanitizeTreeData(tree: any): FamilyTreeData {
         : [],
       generation: typeof rawPerson.generation === 'number' && !isNaN(rawPerson.generation) ? rawPerson.generation : 1,
       isPlaceholder: Boolean(rawPerson.isPlaceholder),
-      branchDirection: (['inherit', 'horizontal', 'vertical', 'rays', 'staggered'].includes(rawPerson.branchDirection))
+      branchDirection: (['inherit', 'horizontal', 'vertical', 'rays', 'staggered', 'spine-right', 'spine-left', 'alternating'].includes(rawPerson.branchDirection))
         ? rawPerson.branchDirection
         : 'inherit',
     };
