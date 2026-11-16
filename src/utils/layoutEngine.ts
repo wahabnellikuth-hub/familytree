@@ -1,12 +1,12 @@
 import { FamilyTreeData, LayoutMode, NodePosition, TreeConnectionLine, TreeLayoutResult, BranchDirection } from '../types';
 import { countSubtreeDescendants, sanitizeTreeData } from './treeOperations';
 
-export const BASE_BOX_WIDTH = 150;
-export const BASE_BOX_HEIGHT = 46;
-export const VERTICAL_SIBLING_GAP = 24;
-export const VERTICAL_GEN_GAP = 68;
-export const HORIZONTAL_SIBLING_GAP = 20;
-export const HORIZONTAL_GEN_GAP = 88;
+export const BASE_BOX_WIDTH = 132;
+export const BASE_BOX_HEIGHT = 36;
+export const VERTICAL_SIBLING_GAP = 12;
+export const VERTICAL_GEN_GAP = 30;
+export const HORIZONTAL_SIBLING_GAP = 12;
+export const HORIZONTAL_GEN_GAP = 32;
 
 /**
  * Computes dynamic box dimensions so that the person's name and details
@@ -20,7 +20,7 @@ export function computeNodeDimensions(
   const words = text.split(/\s+/);
 
   // Short single or 2-word names: base dimensions
-  if (text.length <= 16) {
+  if (text.length <= 15) {
     return { width: BASE_BOX_WIDTH, height: BASE_BOX_HEIGHT, lines: [text] };
   }
 
@@ -29,8 +29,8 @@ export function computeNodeDimensions(
     const lines: string[] = [];
     let currentLine = '';
     // Determine target characters per line for balanced rectangular proportion
-    const targetLineChars = text.length > 36 ? Math.ceil(text.length / 3) : Math.ceil(text.length / 2);
-    const maxLineChars = Math.max(16, targetLineChars);
+    const targetLineChars = text.length > 30 ? Math.ceil(text.length / 3) : Math.ceil(text.length / 2);
+    const maxLineChars = Math.max(14, targetLineChars);
 
     for (const word of words) {
       if (!currentLine) {
@@ -46,14 +46,14 @@ export function computeNodeDimensions(
 
     // Compute width and height based on the longest wrapped line
     const longestLineLen = Math.max(...lines.map((l) => l.length));
-    const dynamicW = Math.min(320, Math.max(BASE_BOX_WIDTH, Math.round(longestLineLen * 9.5 + 28)));
-    const dynamicH = Math.max(BASE_BOX_HEIGHT, lines.length * 20 + 16);
+    const dynamicW = Math.min(260, Math.max(BASE_BOX_WIDTH, Math.round(longestLineLen * 8.5 + 20)));
+    const dynamicH = Math.max(BASE_BOX_HEIGHT, lines.length * 16 + 8);
 
     return { width: dynamicW, height: dynamicH, lines };
   }
 
   // Single long word without spaces: expand width proportionally
-  const dynamicW = Math.min(340, Math.max(BASE_BOX_WIDTH, Math.round(text.length * 9.5 + 28)));
+  const dynamicW = Math.min(280, Math.max(BASE_BOX_WIDTH, Math.round(text.length * 8.5 + 20)));
   return { width: dynamicW, height: BASE_BOX_HEIGHT, lines: [text] };
 }
 
@@ -133,24 +133,28 @@ function layoutSubtreeFlexible(
     layoutSubtreeFlexible(tree, cid, collapsedSet, globalMode, depth + 1)
   );
 
+  const parentY = depth * (BASE_BOX_HEIGHT + VERTICAL_GEN_GAP);
+  const parentBottomY = parentY + dims.height;
+  const parentCenterY = parentY + dims.height / 2;
+
   if (childrenDir === 'rays') {
     // -------------------------------------------------------------
     // SUN RAYS / RIGHT-SIDE HORIZONTAL FAN (Upper, Straight, Below)
-    // Arranges sons from the right side of the father's box
+    // Arranges sons tightly from the right side of father's box
     // -------------------------------------------------------------
-    const childLeftTargetX = halfW + 54;
+    const childLeftTargetX = halfW + 22; // Compact 22px ray arm
     const childHeights = laidOutChildren.map((c) => getSubtreeBoundingBox(c).height);
-    const totalSubtreeH = childHeights.reduce((a, b) => a + b, 0) + (laidOutChildren.length - 1) * VERTICAL_SIBLING_GAP;
-    let currentY = dims.height / 2 - totalSubtreeH / 2;
+    const totalSubtreeH = childHeights.reduce((a, b) => a + b, 0) + (laidOutChildren.length - 1) * 10;
+    let currentTopY = parentCenterY - totalSubtreeH / 2;
     let maxChildSubtreeRight = halfW;
 
     for (let i = 0; i < laidOutChildren.length; i++) {
       const child = laidOutChildren[i];
       const bbox = getSubtreeBoundingBox(child);
       shiftSubtreeX(child, childLeftTargetX + child.width / 2);
-      shiftSubtreeY(child, currentY - bbox.minY);
+      shiftSubtreeY(child, currentTopY - bbox.minY);
 
-      currentY += bbox.height + VERTICAL_SIBLING_GAP;
+      currentTopY += bbox.height + 10;
       const newBBox = getSubtreeBoundingBox(child);
       maxChildSubtreeRight = Math.max(maxChildSubtreeRight, newBBox.maxX);
     }
@@ -161,7 +165,7 @@ function layoutSubtreeFlexible(
     return {
       id: nodeId,
       x: 0,
-      y: depth * (BASE_BOX_HEIGHT + VERTICAL_GEN_GAP),
+      y: parentY,
       width: dims.width,
       height: dims.height,
       leftContour,
@@ -176,20 +180,19 @@ function layoutSubtreeFlexible(
     // RIGHT SPINE / COMB RIGHT (matches user sketch)
     // Vertical line drops straight down from father, all sons to the right
     // -------------------------------------------------------------
-    let currentYOffset = VERTICAL_GEN_GAP + dims.height;
+    let currentTopY = parentBottomY + 16;
     let maxChildSubtreeRight = halfW;
 
     for (let i = 0; i < laidOutChildren.length; i++) {
       const child = laidOutChildren[i];
-      // Indent children to the right of trunk drop line (x = 0)
-      shiftSubtreeX(child, 26 + child.width / 2);
-      shiftSubtreeY(child, currentYOffset);
-
-      const childSubtreeHeight = getSubtreeBoundingBox(child).height;
-      currentYOffset += childSubtreeHeight + VERTICAL_SIBLING_GAP;
-
       const bbox = getSubtreeBoundingBox(child);
-      maxChildSubtreeRight = Math.max(maxChildSubtreeRight, bbox.maxX);
+      // Trunk line drops at x = 0. Sons indented 14px to the right of trunk.
+      shiftSubtreeX(child, 14 + child.width / 2);
+      shiftSubtreeY(child, currentTopY - bbox.minY);
+
+      const newBBox = getSubtreeBoundingBox(child);
+      currentTopY = newBBox.maxY + 10;
+      maxChildSubtreeRight = Math.max(maxChildSubtreeRight, newBBox.maxX);
     }
 
     const leftContour: number[] = [-halfW, 0];
@@ -198,7 +201,7 @@ function layoutSubtreeFlexible(
     return {
       id: nodeId,
       x: 0,
-      y: depth * (BASE_BOX_HEIGHT + VERTICAL_GEN_GAP),
+      y: parentY,
       width: dims.width,
       height: dims.height,
       leftContour,
@@ -213,20 +216,19 @@ function layoutSubtreeFlexible(
     // LEFT SPINE / COMB LEFT
     // Vertical line drops straight down from father, all sons to the left
     // -------------------------------------------------------------
-    let currentYOffset = VERTICAL_GEN_GAP + dims.height;
+    let currentTopY = parentBottomY + 16;
     let minChildSubtreeLeft = -halfW;
 
     for (let i = 0; i < laidOutChildren.length; i++) {
       const child = laidOutChildren[i];
-      // Indent children to the left of trunk drop line (x = 0)
-      shiftSubtreeX(child, -26 - child.width / 2);
-      shiftSubtreeY(child, currentYOffset);
-
-      const childSubtreeHeight = getSubtreeBoundingBox(child).height;
-      currentYOffset += childSubtreeHeight + VERTICAL_SIBLING_GAP;
-
       const bbox = getSubtreeBoundingBox(child);
-      minChildSubtreeLeft = Math.min(minChildSubtreeLeft, bbox.minX);
+      // Trunk line drops at x = 0. Sons indented 14px to the left of trunk.
+      shiftSubtreeX(child, -14 - child.width / 2);
+      shiftSubtreeY(child, currentTopY - bbox.minY);
+
+      const newBBox = getSubtreeBoundingBox(child);
+      currentTopY = newBBox.maxY + 10;
+      minChildSubtreeLeft = Math.min(minChildSubtreeLeft, newBBox.minX);
     }
 
     const leftContour: number[] = [-halfW, minChildSubtreeLeft];
@@ -235,7 +237,7 @@ function layoutSubtreeFlexible(
     return {
       id: nodeId,
       x: 0,
-      y: depth * (BASE_BOX_HEIGHT + VERTICAL_GEN_GAP),
+      y: parentY,
       width: dims.width,
       height: dims.height,
       leftContour,
@@ -249,23 +251,22 @@ function layoutSubtreeFlexible(
     // -------------------------------------------------------------
     // ALTERNATING FISHBONE SPINE (Left & Right alternating)
     // -------------------------------------------------------------
-    let currentYOffset = VERTICAL_GEN_GAP + dims.height;
+    let currentTopY = parentBottomY + 16;
     let minChildSubtreeLeft = -halfW;
     let maxChildSubtreeRight = halfW;
 
     for (let i = 0; i < laidOutChildren.length; i++) {
       const child = laidOutChildren[i];
-      const isRight = i % 2 === 0;
-      const targetX = isRight ? (26 + child.width / 2) : (-26 - child.width / 2);
-      shiftSubtreeX(child, targetX);
-      shiftSubtreeY(child, currentYOffset);
-
-      const childSubtreeHeight = getSubtreeBoundingBox(child).height;
-      currentYOffset += childSubtreeHeight + VERTICAL_SIBLING_GAP;
-
       const bbox = getSubtreeBoundingBox(child);
-      minChildSubtreeLeft = Math.min(minChildSubtreeLeft, bbox.minX);
-      maxChildSubtreeRight = Math.max(maxChildSubtreeRight, bbox.maxX);
+      const isRight = i % 2 === 0;
+      const targetX = isRight ? (14 + child.width / 2) : (-14 - child.width / 2);
+      shiftSubtreeX(child, targetX);
+      shiftSubtreeY(child, currentTopY - bbox.minY);
+
+      const newBBox = getSubtreeBoundingBox(child);
+      currentTopY = newBBox.maxY + 10;
+      minChildSubtreeLeft = Math.min(minChildSubtreeLeft, newBBox.minX);
+      maxChildSubtreeRight = Math.max(maxChildSubtreeRight, newBBox.maxX);
     }
 
     const leftContour: number[] = [-halfW, minChildSubtreeLeft];
@@ -274,7 +275,7 @@ function layoutSubtreeFlexible(
     return {
       id: nodeId,
       x: 0,
-      y: depth * (BASE_BOX_HEIGHT + VERTICAL_GEN_GAP),
+      y: parentY,
       width: dims.width,
       height: dims.height,
       leftContour,
@@ -288,25 +289,20 @@ function layoutSubtreeFlexible(
     // -------------------------------------------------------------
     // VERTICAL SIBLING STACK (Column of brothers under this father)
     // -------------------------------------------------------------
-    // In this mode, siblings are stacked one under another along Y.
-    // Each sibling's Y starts below the previous sibling's complete subtree.
-    let currentYOffset = VERTICAL_GEN_GAP + dims.height;
+    let currentTopY = parentBottomY + VERTICAL_GEN_GAP;
     let maxChildSubtreeRight = halfW;
     let minChildSubtreeLeft = -halfW;
 
     for (let i = 0; i < laidOutChildren.length; i++) {
       const child = laidOutChildren[i];
-      // Position child in the vertical column aligned with father at x = 0
-      shiftSubtreeY(child, currentYOffset);
-
-      // Measure height of this child's subtree to offset next sibling
-      const childSubtreeHeight = getSubtreeBoundingBox(child).height;
-      currentYOffset += childSubtreeHeight + VERTICAL_SIBLING_GAP;
-
-      // Track horizontal extents
       const bbox = getSubtreeBoundingBox(child);
-      minChildSubtreeLeft = Math.min(minChildSubtreeLeft, bbox.minX);
-      maxChildSubtreeRight = Math.max(maxChildSubtreeRight, bbox.maxX);
+      shiftSubtreeX(child, 0);
+      shiftSubtreeY(child, currentTopY - bbox.minY);
+
+      const newBBox = getSubtreeBoundingBox(child);
+      currentTopY = newBBox.maxY + 10;
+      minChildSubtreeLeft = Math.min(minChildSubtreeLeft, newBBox.minX);
+      maxChildSubtreeRight = Math.max(maxChildSubtreeRight, newBBox.maxX);
     }
 
     // Build contours
@@ -316,7 +312,7 @@ function layoutSubtreeFlexible(
     return {
       id: nodeId,
       x: 0,
-      y: depth * (BASE_BOX_HEIGHT + VERTICAL_GEN_GAP),
+      y: parentY,
       width: dims.width,
       height: dims.height,
       leftContour,
@@ -330,13 +326,21 @@ function layoutSubtreeFlexible(
     // -------------------------------------------------------------
     // HORIZONTAL SIBLING ARRANGEMENT (Side-by-side)
     // -------------------------------------------------------------
+    const targetChildrenY = parentBottomY + VERTICAL_GEN_GAP;
+    for (const child of laidOutChildren) {
+      const diffY = targetChildrenY - child.y;
+      if (diffY !== 0) {
+        shiftSubtreeY(child, diffY);
+      }
+    }
+
     const childOffsets: number[] = [0];
     const combinedRightContour: number[] = [...laidOutChildren[0].rightContour];
 
     for (let i = 1; i < laidOutChildren.length; i++) {
       const child = laidOutChildren[i];
       const prevChild = laidOutChildren[i - 1];
-      const branchWeight = Math.min(28, Math.sqrt(child.totalDescendants) * 3);
+      const branchWeight = Math.min(8, Math.sqrt(child.totalDescendants) * 1.0);
       const minGap = VERTICAL_SIBLING_GAP + branchWeight;
 
       let requiredShift = 0;
@@ -404,7 +408,7 @@ function layoutSubtreeFlexible(
     return {
       id: nodeId,
       x: 0,
-      y: depth * (BASE_BOX_HEIGHT + VERTICAL_GEN_GAP),
+      y: parentY,
       width: dims.width,
       height: dims.height,
       leftContour,
@@ -461,7 +465,7 @@ function layoutSubtreeHorizontal(
   for (let i = 1; i < laidOutChildren.length; i++) {
     const child = laidOutChildren[i];
     const prevChild = laidOutChildren[i - 1];
-    const branchWeight = Math.min(24, Math.sqrt(child.totalDescendants) * 2.5);
+    const branchWeight = Math.min(8, Math.sqrt(child.totalDescendants) * 1.0);
     const minGap = HORIZONTAL_SIBLING_GAP + branchWeight;
 
     let requiredShift = 0;
@@ -642,7 +646,7 @@ export function calculateTreeLayout(
     maxY = Math.max(maxY, n.y + n.height);
   }
 
-  const PADDING = 60;
+  const PADDING = 24;
   const offsetX = -minX + PADDING;
   const offsetY = -minY + PADDING;
 
@@ -710,17 +714,41 @@ export function calculateTreeLayout(
         const childLeftX = child.pos.x;
         const childLeftY = child.pos.y + child.pos.height / 2;
 
-        lines.push({
-          id: `line_${node.id}_${child.id}`,
-          fromId: node.id,
-          toId: child.id,
-          points: [
-            { x: parentRightX, y: parentRightY },
-            { x: midX, y: parentRightY },
-            { x: midX, y: childLeftY },
-            { x: childLeftX, y: childLeftY },
-          ],
-        });
+        if (visibleChildren.length === 1 && Math.abs(parentRightY - childLeftY) <= 3) {
+          // Direct straight horizontal line for aligned single child
+          lines.push({
+            id: `line_${node.id}_${child.id}`,
+            fromId: node.id,
+            toId: child.id,
+            points: [
+              { x: parentRightX, y: parentRightY },
+              { x: childLeftX, y: parentRightY },
+            ],
+          });
+        } else if (Math.abs(parentRightY - childLeftY) <= 2) {
+          // Direct straight line if vertically aligned
+          lines.push({
+            id: `line_${node.id}_${child.id}`,
+            fromId: node.id,
+            toId: child.id,
+            points: [
+              { x: parentRightX, y: parentRightY },
+              { x: childLeftX, y: childLeftY },
+            ],
+          });
+        } else {
+          lines.push({
+            id: `line_${node.id}_${child.id}`,
+            fromId: node.id,
+            toId: child.id,
+            points: [
+              { x: parentRightX, y: parentRightY },
+              { x: midX, y: parentRightY },
+              { x: midX, y: childLeftY },
+              { x: childLeftX, y: childLeftY },
+            ],
+          });
+        }
       }
     } else if (childrenDir === 'vertical') {
       // -----------------------------------------------------------
@@ -765,7 +793,7 @@ export function calculateTreeLayout(
       // Subsequent sons: tidy, close side rail (not taking long detour!)
       if (visibleChildren.length > 1) {
         const minChildLeftX = Math.min(...visibleChildren.map((c) => c.pos.x));
-        const sideRailX = minChildLeftX - 16;
+        const sideRailX = minChildLeftX - 12;
 
         for (let i = 1; i < visibleChildren.length; i++) {
           const child = visibleChildren[i];
@@ -912,17 +940,41 @@ export function calculateTreeLayout(
         const childTopX = child.pos.x + child.pos.width / 2;
         const childTopY = child.pos.y;
 
-        lines.push({
-          id: `line_${node.id}_${child.id}`,
-          fromId: node.id,
-          toId: child.id,
-          points: [
-            { x: parentBottomX, y: parentBottomY },
-            { x: parentBottomX, y: midY },
-            { x: childTopX, y: midY },
-            { x: childTopX, y: childTopY },
-          ],
-        });
+        if (visibleChildren.length === 1 && Math.abs(parentBottomX - childTopX) <= 3) {
+          // Single child aligned directly below father: direct 90° straight line
+          lines.push({
+            id: `line_${node.id}_${child.id}`,
+            fromId: node.id,
+            toId: child.id,
+            points: [
+              { x: parentBottomX, y: parentBottomY },
+              { x: parentBottomX, y: childTopY },
+            ],
+          });
+        } else if (Math.abs(parentBottomX - childTopX) <= 2) {
+          // Child directly underneath father: direct vertical drop
+          lines.push({
+            id: `line_${node.id}_${child.id}`,
+            fromId: node.id,
+            toId: child.id,
+            points: [
+              { x: parentBottomX, y: parentBottomY },
+              { x: childTopX, y: childTopY },
+            ],
+          });
+        } else {
+          lines.push({
+            id: `line_${node.id}_${child.id}`,
+            fromId: node.id,
+            toId: child.id,
+            points: [
+              { x: parentBottomX, y: parentBottomY },
+              { x: parentBottomX, y: midY },
+              { x: childTopX, y: midY },
+              { x: childTopX, y: childTopY },
+            ],
+          });
+        }
       }
     }
   }

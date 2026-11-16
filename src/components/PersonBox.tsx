@@ -33,7 +33,7 @@ export const PersonBox: React.FC<PersonBoxProps> = ({
         e.stopPropagation();
         onSelect(node.id);
       }}
-      className={`group absolute select-none rounded-[5px] transition-all duration-150 cursor-pointer flex flex-col justify-center items-center px-2 py-1 ${
+      className={`group absolute select-none rounded-[5px] transition-all duration-150 cursor-pointer flex flex-col justify-center items-center px-1.5 py-0.5 ${
         isPlaceholder
           ? 'bg-slate-50/90 border-2 border-dashed border-slate-300 hover:border-slate-400 text-slate-500'
           : isRoot
@@ -86,8 +86,8 @@ export const PersonBox: React.FC<PersonBoxProps> = ({
 
       {/* Box Name: Strictly person's name only (no emojis, human icons, or profile pictures) */}
       <div
-        className={`w-full text-center break-words px-1.5 text-[12.5px] leading-snug tracking-normal ${
-          isPlaceholder ? 'italic text-slate-400 text-[11.5px]' : isRoot ? 'font-semibold text-sky-950' : 'font-medium'
+        className={`w-full text-center break-words px-1 text-[12px] leading-tight tracking-normal ${
+          isPlaceholder ? 'italic text-slate-400 text-[11px]' : isRoot ? 'font-semibold text-sky-950' : 'font-medium'
         }`}
         title={node.name}
       >
@@ -101,7 +101,7 @@ export const PersonBox: React.FC<PersonBoxProps> = ({
             e.stopPropagation();
             onToggleCollapse(node.id);
           }}
-          className={`absolute -bottom-3 left-1/2 -translate-x-1/2 flex items-center justify-center h-5 px-1.5 rounded-full text-[10px] font-bold shadow border transition-all z-10 ${
+          className={`absolute -bottom-2.5 left-1/2 -translate-x-1/2 flex items-center justify-center h-4 min-w-[18px] px-1 rounded-full text-[9px] font-bold shadow-xs border transition-all z-10 ${
             node.isCollapsed
               ? 'bg-amber-500 text-white border-amber-600 hover:bg-amber-600'
               : 'bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200'
@@ -110,11 +110,11 @@ export const PersonBox: React.FC<PersonBoxProps> = ({
         >
           {node.isCollapsed ? (
             <>
-              <ChevronRight className="w-3 h-3 mr-0.5" />
+              <ChevronRight className="w-2.5 h-2.5 mr-0.5" />
               <span>+{node.totalDescendants}</span>
             </>
           ) : (
-            <ChevronDown className="w-3 h-3" />
+            <ChevronDown className="w-2.5 h-2.5" />
           )}
         </button>
       )}
